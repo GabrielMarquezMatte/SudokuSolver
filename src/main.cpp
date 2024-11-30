@@ -13,7 +13,6 @@ static constexpr std::size_t SudokuRowSize = SudokuSquareSize * SudokuSquareSize
 static constexpr std::size_t SudokuColSize = SudokuSquareSize * SudokuSquareSize;
 static constexpr std::size_t SudokuSize = SudokuColSize * SudokuRowSize;
 static constexpr std::size_t CellSize = 80;
-using CellType = std::bitset<SudokuColSize>;
 
 struct SudokuBits
 {
@@ -45,6 +44,12 @@ public:
     inline constexpr std::uint16_t GetAvailableValues(std::size_t row, std::size_t col, std::size_t square) const
     {
         std::uint16_t usedBits = m_bits[row] | m_bits[9 + col] | m_bits[18 + square];
+        return static_cast<std::uint16_t>(~usedBits & 0x1FF);
+    }
+
+    inline constexpr char GetValue(std::size_t row, std::size_t col, std::size_t square) const
+    {
+        std::uint16_t usedBits = m_bits[row] & m_bits[9 + col] & m_bits[18 + square];
         return static_cast<std::uint16_t>(~usedBits & 0x1FF);
     }
 };
@@ -582,21 +587,21 @@ int main(int, char **)
     {
         return -1; // Erro ao carregar fonte
     }
-    // static constexpr std::array<char, SudokuSize> sudokuGame = {
-    //     5, 3, 0, 0, 7, 0, 0, 0, 0,
-    //     6, 0, 0, 1, 9, 5, 0, 0, 0,
-    //     0, 9, 8, 0, 0, 0, 0, 6, 0,
+    static constexpr std::array<char, SudokuSize> sudokuGame = {
+        5, 3, 0, 0, 7, 0, 0, 0, 0,
+        6, 0, 0, 1, 9, 5, 0, 0, 0,
+        0, 9, 8, 0, 0, 0, 0, 6, 0,
 
-    //     8, 0, 0, 0, 6, 0, 0, 0, 3,
-    //     4, 0, 0, 8, 0, 3, 0, 0, 1,
-    //     7, 0, 0, 0, 2, 0, 0, 0, 6,
+        8, 0, 0, 0, 6, 0, 0, 0, 3,
+        4, 0, 0, 8, 0, 3, 0, 0, 1,
+        7, 0, 0, 0, 2, 0, 0, 0, 6,
 
-    //     0, 6, 0, 0, 0, 0, 2, 8, 0,
-    //     0, 0, 0, 4, 1, 9, 0, 0, 5,
-    //     0, 0, 0, 0, 8, 0, 0, 7, 9};
+        0, 6, 0, 0, 0, 0, 2, 8, 0,
+        0, 0, 0, 4, 1, 9, 0, 0, 5,
+        0, 0, 0, 0, 8, 0, 0, 7, 9};
     std::random_device device;
     pcg64 rng{device()};
-    static constexpr float probability = 0.4f;
+    static constexpr float probability = 0.15f;
     SudokuMatrix data = CreateBoard(probability, rng);
     // static constexpr SudokuMatrix data{sudokuGame};
     BackTrackingSolver solver{data};
