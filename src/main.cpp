@@ -15,36 +15,65 @@ static constexpr std::size_t SudokuSize = SudokuColSize * SudokuRowSize;
 static constexpr std::size_t CellSize = 80;
 using CellType = std::bitset<SudokuColSize>;
 
+struct SudokuBits
+{
+private:
+    std::array<std::uint16_t, 27> m_bits;
+public:
+    inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    {
+        std::uint16_t mask = 1 << (value - 1);
+        m_bits[row] |= mask;
+        m_bits[9 + col] |= mask;
+        m_bits[18 + square] |= mask;
+    }
+
+    inline constexpr void ResetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    {
+        std::uint16_t mask = ~(1 << (value - 1));
+        m_bits[row] &= mask;
+        m_bits[9 + col] &= mask;
+        m_bits[18 + square] &= mask;
+    }
+
+    inline constexpr bool Test(std::size_t row, std::size_t col, std::size_t square, char value) const
+    {
+        std::uint16_t mask = 1 << (value - 1);
+        return (m_bits[row] & mask) != 0 && (m_bits[9 + col] & mask) != 0 && (m_bits[18 + square] & mask) != 0;
+    }
+
+    inline constexpr std::uint16_t GetAvailableValues(std::size_t row, std::size_t col, std::size_t square) const
+    {
+        std::uint16_t usedBits = m_bits[row] | m_bits[9 + col] | m_bits[18 + square];
+        return static_cast<std::uint16_t>(~usedBits & 0x1FF);
+    }
+};
+
 class SudokuMatrix
 {
 private:
     std::array<char, SudokuSize> m_data;
-    std::array<CellType, SudokuRowSize> m_rowBits;
-    std::array<CellType, SudokuColSize> m_colBits;
-    std::array<CellType, SudokuSquareSize * SudokuSquareSize> m_squareBits;
+    SudokuBits m_dataBits;
 
-    static inline constexpr std::size_t MatrixIndex(const std::size_t row, const std::size_t col)
-    {
-        return row * SudokuRowSize + col;
-    }
 
+public:
     static inline constexpr std::size_t SquareIndex(std::size_t row, std::size_t col)
     {
         std::size_t squareRow = row / SudokuSquareSize;
         std::size_t squareCol = col / SudokuSquareSize;
         return squareRow * SudokuSquareSize + squareCol;
     }
-
-public:
-    constexpr SudokuMatrix()
+    static inline constexpr std::size_t MatrixIndex(const std::size_t row, const std::size_t col)
     {
-        m_data.fill(0);
-        m_rowBits.fill(CellType());
-        m_colBits.fill(CellType());
-        m_squareBits.fill(CellType());
+        return row * SudokuRowSize + col;
     }
 
-    constexpr SudokuMatrix(const std::array<char, SudokuSize> &data) : m_data(data)
+    constexpr SudokuMatrix() : m_dataBits({})
+    {
+        m_data.fill(0);
+    }
+
+    constexpr SudokuMatrix(const std::array<char, SudokuSize> &data) : m_data(data), m_dataBits({})
     {
         // Inicializa os bitsets para marcar os valores presentes na matriz inicial
         for (std::size_t row = 0; row < SudokuRowSize; ++row)
@@ -56,30 +85,22 @@ public:
                 {
                     continue;
                 }
-                std::size_t bitIndex = value - 1; // Convertendo valor (1-9) para índice (0-8)
                 std::size_t squareIndex = SquareIndex(row, col);
-
                 // Marca os valores nos bitsets correspondentes
-                m_rowBits[row].set(bitIndex);
-                m_colBits[col].set(bitIndex);
-                m_squareBits[squareIndex].set(bitIndex);
+                m_dataBits.SetValue(row, col, squareIndex, value);
             }
         }
     }
 
     constexpr SudokuMatrix(const SudokuMatrix &other)
         : m_data(other.m_data),
-          m_rowBits(other.m_rowBits),
-          m_colBits(other.m_colBits),
-          m_squareBits(other.m_squareBits)
+        m_dataBits(other.m_dataBits)
     {
     }
 
     constexpr SudokuMatrix(SudokuMatrix &&other) noexcept
         : m_data(std::move(other.m_data)),
-          m_rowBits(std::move(other.m_rowBits)),
-          m_colBits(std::move(other.m_colBits)),
-          m_squareBits(std::move(other.m_squareBits))
+          m_dataBits(std::move(other.m_dataBits))
     {
     }
 
@@ -90,9 +111,7 @@ public:
             return *this;
         }
         m_data = other.m_data;
-        m_rowBits = other.m_rowBits;
-        m_colBits = other.m_colBits;
-        m_squareBits = other.m_squareBits;
+        m_dataBits = other.m_dataBits;
         return *this;
     }
 
@@ -101,9 +120,7 @@ public:
         if (this != &other) // Evita a auto-atribuição
         {
             m_data = std::move(other.m_data);
-            m_rowBits = std::move(other.m_rowBits);
-            m_colBits = std::move(other.m_colBits);
-            m_squareBits = std::move(other.m_squareBits);
+            m_dataBits = std::move(other.m_dataBits);
         }
         return *this;
     }
@@ -113,18 +130,18 @@ public:
         return m_data[MatrixIndex(row, col)];
     }
 
-    inline constexpr void SetValue(std::size_t row, std::size_t col, char value)
+    inline constexpr char GetValue(std::size_t index) const
     {
-        std::size_t index = MatrixIndex(row, col);
-        std::size_t squareIndex = SquareIndex(row, col);
+        return m_data[index];
+    }
 
+    inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex, char value)
+    {
         // Remove o valor anterior, se houver
         char &oldValue = m_data[index];
         if (oldValue != 0)
         {
-            m_rowBits[row].reset(oldValue - 1);
-            m_colBits[col].reset(oldValue - 1);
-            m_squareBits[squareIndex].reset(oldValue - 1);
+            m_dataBits.ResetValue(row, col, squareIndex, oldValue);
         }
 
         // Define o novo valor
@@ -133,27 +150,92 @@ public:
         // Atualiza os bitsets se o valor não for zero
         if (value != 0)
         {
-            m_rowBits[row].set(value - 1);
-            m_colBits[col].set(value - 1);
-            m_squareBits[squareIndex].set(value - 1);
+            m_dataBits.SetValue(row, col, squareIndex, value);
         }
+    }
+
+    inline constexpr void SetValue(std::size_t row, std::size_t col, char value)
+    {
+        std::size_t index = MatrixIndex(row, col);
+        std::size_t squareIndex = SquareIndex(row, col);
+        return SetValue(row, col, index, squareIndex, value);
+    }
+
+    inline constexpr bool IsValidPlay(char value, std::size_t row, std::size_t col, std::size_t squareIndex) const
+    {
+        return !m_dataBits.Test(row, col, squareIndex, value);
     }
 
     inline constexpr bool IsValidPlay(char value, std::size_t row, std::size_t col) const
     {
-        std::size_t bitIndex = value - 1; // O valor é de 1 a 9, mas o índice do bitset é de 0 a 8
-        std::size_t squareIndex = SquareIndex(row, col);
+        return IsValidPlay(value, row, col, SquareIndex(row, col));
+    }
 
-        // Verifica se o valor já está presente na linha, coluna ou quadrante
-        return !m_rowBits[row].test(bitIndex) &&
-               !m_colBits[col].test(bitIndex) &&
-               !m_squareBits[squareIndex].test(bitIndex);
+    struct PossibleValuesIterator
+    {
+    private:
+        std::uint16_t m_flag;
+
+    public:
+        constexpr PossibleValuesIterator(std::uint16_t flag) : m_flag(flag) {}
+        // Iterator functions
+        inline constexpr PossibleValuesIterator &operator++()
+        {
+            // Remove the least significant set bit
+            m_flag &= (m_flag - 1);
+            return *this;
+        }
+        inline constexpr char operator*() const
+        {
+            // Get the least significant set bit
+            std::uint16_t newValue = m_flag & -static_cast<std::int16_t>(m_flag);
+            int count = std::countr_zero(newValue);
+            return static_cast<char>(count + 1);
+        }
+        inline constexpr bool operator!=(const PossibleValuesIterator &other) const
+        {
+            return m_flag != other.m_flag;
+        }
+        inline constexpr bool operator==(const std::uint16_t value) const
+        {
+            return m_flag == value;
+        }
+        inline constexpr PossibleValuesIterator begin()
+        {
+            return {m_flag};
+        }
+        static inline constexpr PossibleValuesIterator end()
+        {
+            return {0};
+        }
+    };
+
+    inline constexpr PossibleValuesIterator GetPossibleValues(std::size_t row, std::size_t col, std::size_t squareIndex) const
+    {
+        return {m_dataBits.GetAvailableValues(row, col, squareIndex)};
+    }
+
+    inline constexpr PossibleValuesIterator GetPossibleValues(std::size_t row, std::size_t col) const
+    {
+        return GetPossibleValues(row, col, SquareIndex(row, col));
+    }
+
+    inline constexpr void RemoveValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex)
+    {
+        SetValue(row, col, index, squareIndex, 0); // Define o valor como zero, removendo-o
+    }
+
+    inline constexpr void RemoveValue(std::size_t row, std::size_t col, std::size_t index)
+    {
+        std::size_t squareIndex = SquareIndex(row, col);
+        SetValue(row, col, index, squareIndex, 0); // Define o valor como zero, removendo-o
     }
 
     inline constexpr void RemoveValue(std::size_t row, std::size_t col)
     {
         SetValue(row, col, 0); // Define o valor como zero, removendo-o
     }
+
 };
 
 enum class AdvanceResult
@@ -167,43 +249,56 @@ class BackTrackingSolver
 {
 private:
     SudokuMatrix m_data;
-    std::size_t m_step = 0;
     std::size_t m_currentRow = 0;
     std::size_t m_currentCol = 0;
     AdvanceResult m_currentState = AdvanceResult::Continue;
     bool m_solved = false;
-    inline constexpr void AdvanceToNextCell()
+    inline constexpr bool AdvanceToNextCell()
     {
+        if (m_currentCol == SudokuColSize - 1 && m_currentRow == SudokuRowSize - 1)
+        {
+            m_currentState = AdvanceResult::Finished;
+            m_solved = true;
+            return false;
+        }
         if (++m_currentCol == SudokuColSize)
         {
             m_currentCol = 0;
             m_currentRow++;
         }
+        return true;
     }
-    inline constexpr void RetreatToPreviousCell()
+    inline constexpr bool RetreatToPreviousCell()
     {
+        if (m_currentCol == 0 && m_currentRow == 0)
+        {
+            m_currentState = AdvanceResult::Finished;
+            m_solved = false;
+            return false;
+        }
         if (m_currentCol == 0 && m_currentRow != 0)
         {
             m_currentCol = SudokuColSize - 1;
             m_currentRow--;
-            return;
+            return true;
         }
         if (m_currentCol != 0)
         {
             m_currentCol--;
         }
+        return true;
     }
 
-    inline constexpr void Continue()
+    inline constexpr bool Continue()
     {
         m_currentState = AdvanceResult::Continue;
-        AdvanceToNextCell();
+        return AdvanceToNextCell();
     }
 
-    inline constexpr void BackTrack()
+    inline constexpr bool BackTrack()
     {
         m_currentState = AdvanceResult::BackTracking;
-        RetreatToPreviousCell();
+        return RetreatToPreviousCell();
     }
 
 public:
@@ -217,50 +312,42 @@ public:
             m_currentState = AdvanceResult::Finished;
             return false;
         }
-        if (m_currentRow == 0 && m_currentCol == 0 && m_currentState == AdvanceResult::BackTracking)
-        {
-            m_solved = false;
-            return false;
-        }
         if (m_currentRow == SudokuRowSize)
         {
             m_solved = true;
             m_currentState = AdvanceResult::Finished;
             return false;
         }
+        std::size_t index = SudokuMatrix::MatrixIndex(m_currentRow, m_currentCol);
         if (m_currentState == AdvanceResult::BackTracking)
         {
-            char value = m_data.GetValue(m_currentRow, m_currentCol) + 1;
-            m_data.RemoveValue(m_currentRow, m_currentCol);
-            for (; value <= 9; value++)
+            char value = m_data.GetValue(index) + 1;
+            std::size_t squareIndex = SudokuMatrix::SquareIndex(m_currentRow, m_currentCol);
+            m_data.RemoveValue(m_currentRow, m_currentCol, index, squareIndex);
+            auto possibleValues = m_data.GetPossibleValues(m_currentRow, m_currentCol, squareIndex);
+            for (auto possibility : possibleValues)
             {
-                if (m_data.IsValidPlay(value, m_currentRow, m_currentCol))
+                if (possibility >= value)
                 {
-                    m_data.SetValue(m_currentRow, m_currentCol, value);
-                    Continue();
-                    return true;
+                    m_data.SetValue(m_currentRow, m_currentCol, index, squareIndex, possibility);
+                    return Continue();
                 }
             }
-            BackTrack();
-            return true;
+            return BackTrack();
         }
-        char inSpot = m_data.GetValue(m_currentRow, m_currentCol);
+        char inSpot = m_data.GetValue(index);
         if (inSpot != 0)
         {
-            Continue();
-            return true;
+            return Continue();
         }
-        for (char value = 1; value <= 9; value++)
+        std::size_t squareIndex = SudokuMatrix::SquareIndex(m_currentRow, m_currentCol);
+        auto possibleValues = m_data.GetPossibleValues(m_currentRow, m_currentCol, squareIndex);
+        if (possibleValues == 0)
         {
-            if (m_data.IsValidPlay(value, m_currentRow, m_currentCol))
-            {
-                m_data.SetValue(m_currentRow, m_currentCol, value);
-                Continue();
-                return true;
-            }
+            return BackTrack();
         }
-        BackTrack();
-        return true;
+        m_data.SetValue(m_currentRow, m_currentCol, index, squareIndex, *possibleValues);
+        return Continue();
     }
     constexpr bool Retreat()
     {
@@ -332,8 +419,8 @@ static void BM_Solver(benchmark::State &state)
     // std::random_device device;
     // pcg64 rng{device()};
     // static constexpr float probability = 0.2f;
-    // SudokuMatrix data = CreateBoard(probability, rng);
-    std::array<char, SudokuSize> sudokuGame = {
+    // SudokuMatrix sudokuGame = CreateBoard(probability, rng);
+    static constexpr std::array<char, SudokuSize> sudokuGame = {
         5, 3, 0, 0, 7, 0, 0, 0, 0,
         6, 0, 0, 1, 9, 5, 0, 0, 0,
         0, 9, 8, 0, 0, 0, 0, 6, 0,
@@ -345,18 +432,45 @@ static void BM_Solver(benchmark::State &state)
         0, 6, 0, 0, 0, 0, 2, 8, 0,
         0, 0, 0, 4, 1, 9, 0, 0, 5,
         0, 0, 0, 0, 8, 0, 0, 7, 9};
-    BackTrackingSolver solver{sudokuGame};
+    std::int64_t index = 0;
     for (auto _ : state)
     {
+        BackTrackingSolver solver{sudokuGame};
         while (solver.Advance())
-            ;
-        benchmark::DoNotOptimize(solver);
+        {
+            index++;
+        }
     }
+    state.SetItemsProcessed(index);
 }
 
 BENCHMARK(BM_Solver);
 
 BENCHMARK_MAIN();
+// int main()
+// {
+//     static constexpr std::array<char, SudokuSize> sudokuGame = {
+//         5, 3, 0, 0, 7, 0, 0, 0, 0,
+//         6, 0, 0, 1, 9, 5, 0, 0, 0,
+//         0, 9, 8, 0, 0, 0, 0, 6, 0,
+
+//         8, 0, 0, 0, 6, 0, 0, 0, 3,
+//         4, 0, 0, 8, 0, 3, 0, 0, 1,
+//         7, 0, 0, 0, 2, 0, 0, 0, 6,
+
+//         0, 6, 0, 0, 0, 0, 2, 8, 0,
+//         0, 0, 0, 4, 1, 9, 0, 0, 5,
+//         0, 0, 0, 0, 8, 0, 0, 7, 9};
+//     std::int64_t index = 0;
+//     for (std::size_t i = 0; i < 1000; i++)
+//     {
+//         BackTrackingSolver solver{sudokuGame};
+//         while (solver.Advance())
+//         {
+//             index++;
+//         }
+//     }
+// }
 #else
 #include <SFML/Graphics.hpp>
 
@@ -381,7 +495,7 @@ static void DrawLines(sf::RenderWindow &window)
     }
 }
 
-static void DrawNumbers(const SudokuMatrix &board, sf::RenderWindow &window, sf::Font& font)
+static void DrawNumbers(const SudokuMatrix &board, sf::RenderWindow &window, sf::Font &font)
 {
     for (std::size_t i = 0; i < SudokuRowSize; ++i) // Corrigido para < em vez de <=
     {
@@ -484,12 +598,13 @@ int main(int, char **)
     pcg64 rng{device()};
     static constexpr float probability = 0.4f;
     SudokuMatrix data = CreateBoard(probability, rng);
+    // static constexpr SudokuMatrix data{sudokuGame};
     BackTrackingSolver solver{data};
     std::size_t index = 0;
     while (solver.Advance())
     {
         index++;
-        if (index % 1000 == 0)
+        if (index % 100'000 == 0)
         {
             std::cout << "Index: " << index << '\n';
         }

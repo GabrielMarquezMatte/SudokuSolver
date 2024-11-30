@@ -30,6 +30,13 @@
             "configurePreset": "VisualStudio",
             "configuration": "Release",
             "jobs": 8
+        },
+        {
+            "name": "VisualStudio-release-info",
+            "displayName": "Visual Studio Community 2022 Release - amd64 - Release with debug information",
+            "configurePreset": "VisualStudio",
+            "configuration": "RelWithDebInfo",
+            "jobs": 8
         }
     ]
 }
