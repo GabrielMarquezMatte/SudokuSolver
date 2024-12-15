@@ -46,12 +46,6 @@ public:
         std::uint16_t usedBits = m_bits[row] | m_bits[9 + col] | m_bits[18 + square];
         return static_cast<std::uint16_t>(~usedBits & 0x1FF);
     }
-
-    inline constexpr char GetValue(std::size_t row, std::size_t col, std::size_t square) const
-    {
-        std::uint16_t usedBits = m_bits[row] & m_bits[9 + col] & m_bits[18 + square];
-        return static_cast<std::uint16_t>(~usedBits & 0x1FF);
-    }
 };
 
 class SudokuMatrix
@@ -532,14 +526,13 @@ static bool RunClass(const SudokuMatrix &matrix, sf::RenderWindow &window, sf::F
 {
     BackTrackingSolver solver{matrix};
     std::size_t index = 0;
-    while (solver.Advance() || window.isOpen())
+    while (solver.Advance() && window.isOpen())
     {
-        if (index % 100 != 0)
+        if (index % 1'000 != 0)
         {
             index++;
             continue;
         }
-        const auto &board = solver.GetBoard();
         sf::Event event;
         while (window.pollEvent(event))
         {
@@ -550,6 +543,7 @@ static bool RunClass(const SudokuMatrix &matrix, sf::RenderWindow &window, sf::F
             }
         }
 
+        const auto &board = solver.GetBoard();
         // Limpa a janela com cor branca
         window.clear(sf::Color::White);
 
@@ -565,6 +559,7 @@ static bool RunClass(const SudokuMatrix &matrix, sf::RenderWindow &window, sf::F
     }
 
     // Mantém a janela aberta até ser fechada pelo usuário
+    bool drawn = false;
     while (window.isOpen())
     {
         sf::Event event;
@@ -575,6 +570,23 @@ static bool RunClass(const SudokuMatrix &matrix, sf::RenderWindow &window, sf::F
                 window.close();
             }
         }
+        if (drawn)
+        {
+            continue;
+        }
+        const auto &board = solver.GetBoard();
+        // Limpa a janela com cor branca
+        window.clear(sf::Color::White);
+
+        // Desenha as linhas horizontais e verticais para formar a grade
+        DrawLines(window);
+
+        // Desenha os números dentro das células
+        DrawNumbers(board, window, font);
+
+        // Atualiza a janela
+        window.display();
+        drawn = true;
     }
 
     return solver.IsSolved();
@@ -601,7 +613,7 @@ int main(int, char **)
         0, 0, 0, 0, 8, 0, 0, 7, 9};
     std::random_device device;
     pcg64 rng{device()};
-    static constexpr float probability = 0.15f;
+    static constexpr float probability = 0.3f;
     SudokuMatrix data = CreateBoard(probability, rng);
     // static constexpr SudokuMatrix data{sudokuGame};
     BackTrackingSolver solver{data};
@@ -609,7 +621,7 @@ int main(int, char **)
     while (solver.Advance())
     {
         index++;
-        if (index % 100'000 == 0)
+        if (index % 1'000'000 == 0)
         {
             std::cout << "Index: " << index << '\n';
         }
