@@ -25,5 +25,7 @@ find_path(PCG_INCLUDE_DIRS "pcg_extras.hpp")
 
 add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE sfml-system sfml-network sfml-graphics sfml-window sfml-audio)
-target_link_libraries(${PROJECT_NAME} PRIVATE benchmark::benchmark benchmark::benchmark_main)
 target_include_directories(${PROJECT_NAME} PRIVATE ${PCG_INCLUDE_DIRS})
+add_executable(${PROJECT_NAME}_BENCHMARK src/benchmarks.cpp)
+target_link_libraries(${PROJECT_NAME}_BENCHMARK PRIVATE benchmark::benchmark benchmark::benchmark_main)
+target_include_directories(${PROJECT_NAME}_BENCHMARK PRIVATE ${PCG_INCLUDE_DIRS})

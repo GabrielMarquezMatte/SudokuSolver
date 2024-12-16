@@ -71,6 +71,7 @@
         "numeric": "cpp",
         "regex": "cpp",
         "stop_token": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "deque": "cpp"
     }
 }
