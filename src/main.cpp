@@ -5,36 +5,40 @@
 #include <pcg_random.hpp>
 #include <SFML/Graphics.hpp>
 #include "../include/solvers/BackTracking.hpp"
-#include "../include/RandomSudoku.hpp"
+#include "../include/SudokuUtilities.hpp"
 
-static constexpr std::size_t CellSize = 80;
+static constexpr std::size_t CellSize = 48;
 
+template<std::size_t N>
 static void DrawLines(sf::RenderWindow &window)
 {
-    for (std::size_t i = 0; i <= SudokuRowSize; ++i)
+    constexpr std::size_t Size = N * N;
+    for (std::size_t i = 0; i <= Size; ++i)
     {
         sf::Vertex line[] =
             {
                 sf::Vertex(sf::Vector2f(0, static_cast<float>(i * CellSize)), sf::Color::Black),
-                sf::Vertex(sf::Vector2f(static_cast<float>(SudokuColSize * CellSize), static_cast<float>(i * CellSize)), sf::Color::Black)};
+                sf::Vertex(sf::Vector2f(static_cast<float>(Size * CellSize), static_cast<float>(i * CellSize)), sf::Color::Black)};
         window.draw(line, 2, sf::Lines);
     }
 
-    for (std::size_t j = 0; j <= SudokuColSize; ++j)
+    for (std::size_t j = 0; j <= Size; ++j)
     {
         sf::Vertex line[] =
             {
                 sf::Vertex(sf::Vector2f(static_cast<float>(j * CellSize), 0), sf::Color::Black),
-                sf::Vertex(sf::Vector2f(static_cast<float>(j * CellSize), static_cast<float>(SudokuRowSize * CellSize)), sf::Color::Black)};
+                sf::Vertex(sf::Vector2f(static_cast<float>(j * CellSize), static_cast<float>(Size * CellSize)), sf::Color::Black)};
         window.draw(line, 2, sf::Lines);
     }
 }
 
-static void DrawNumbers(const SudokuMatrix &board, sf::RenderWindow &window, sf::Font &font)
+template <std::size_t N>
+static void DrawNumbers(const SudokuMatrix<N> &board, sf::RenderWindow &window, sf::Font &font)
 {
-    for (std::size_t i = 0; i < SudokuRowSize; ++i) // Corrigido para < em vez de <=
+    constexpr std::size_t Size = N * N;
+    for (std::size_t i = 0; i < Size; ++i) // Corrigido para < em vez de <=
     {
-        for (std::size_t j = 0; j < SudokuColSize; ++j) // Corrigido para < em vez de <=
+        for (std::size_t j = 0; j < Size; ++j) // Corrigido para < em vez de <=
         {
             char value = board.GetValue(i, j);
             if (value == 0)
@@ -58,9 +62,10 @@ static void DrawNumbers(const SudokuMatrix &board, sf::RenderWindow &window, sf:
     }
 }
 
-static bool RunClass(const SudokuMatrix &matrix, sf::RenderWindow &window, sf::Font &font)
+template <std::size_t N>
+static bool RunClass(const SudokuMatrix<N> &matrix, sf::RenderWindow &window, sf::Font &font)
 {
-    BackTrackingSolver solver{matrix};
+    BackTrackingSolver<N> solver{matrix};
     std::size_t index = 0;
     while (solver.Advance() && window.isOpen())
     {
@@ -84,10 +89,10 @@ static bool RunClass(const SudokuMatrix &matrix, sf::RenderWindow &window, sf::F
         window.clear(sf::Color::White);
 
         // Desenha as linhas horizontais e verticais para formar a grade
-        DrawLines(window);
+        DrawLines<N>(window);
 
         // Desenha os números dentro das células
-        DrawNumbers(board, window, font);
+        DrawNumbers<N>(board, window, font);
 
         // Atualiza a janela
         window.display();
@@ -115,10 +120,10 @@ static bool RunClass(const SudokuMatrix &matrix, sf::RenderWindow &window, sf::F
         window.clear(sf::Color::White);
 
         // Desenha as linhas horizontais e verticais para formar a grade
-        DrawLines(window);
+        DrawLines<N>(window);
 
         // Desenha os números dentro das células
-        DrawNumbers(board, window, font);
+        DrawNumbers<N>(board, window, font);
 
         // Atualiza a janela
         window.display();
@@ -135,40 +140,39 @@ int main(int, char **)
     {
         return -1; // Erro ao carregar fonte
     }
-    static constexpr std::array<char, SudokuSize> sudokuGame = {
-        5, 3, 0, 0, 7, 0, 0, 0, 0,
-        6, 0, 0, 1, 9, 5, 0, 0, 0,
-        0, 9, 8, 0, 0, 0, 0, 6, 0,
+    // static constexpr std::array<char, 81> sudokuGame = {
+    //     5, 3, 0, 0, 7, 0, 0, 0, 0,
+    //     6, 0, 0, 1, 9, 5, 0, 0, 0,
+    //     0, 9, 8, 0, 0, 0, 0, 6, 0,
 
-        8, 0, 0, 0, 6, 0, 0, 0, 3,
-        4, 0, 0, 8, 0, 3, 0, 0, 1,
-        7, 0, 0, 0, 2, 0, 0, 0, 6,
+    //     8, 0, 0, 0, 6, 0, 0, 0, 3,
+    //     4, 0, 0, 8, 0, 3, 0, 0, 1,
+    //     7, 0, 0, 0, 2, 0, 0, 0, 6,
 
-        0, 6, 0, 0, 0, 0, 2, 8, 0,
-        0, 0, 0, 4, 1, 9, 0, 0, 5,
-        0, 0, 0, 0, 8, 0, 0, 7, 9};
+    //     0, 6, 0, 0, 0, 0, 2, 8, 0,
+    //     0, 0, 0, 4, 1, 9, 0, 0, 5,
+    //     0, 0, 0, 0, 8, 0, 0, 7, 9};
     std::random_device device;
     pcg64 rng{device()};
-    static constexpr float probability = 0.3f;
-    SudokuMatrix data = CreateBoard(probability, rng);
-    // static constexpr SudokuMatrix data{sudokuGame};
+    static constexpr float probability = 0.35f;
+    SudokuMatrix data = CreateBoard<3>(probability, rng);
+    // SudokuMatrix<3> data{sudokuGame};
     BackTrackingSolver solver{data};
     std::size_t index = 0;
+    auto start = std::chrono::high_resolution_clock::now();
     while (solver.Advance())
     {
         index++;
-        if (index % 1'000'000 == 0)
-        {
-            std::cout << "Index: " << index << '\n';
-        }
     }
+    auto end = std::chrono::high_resolution_clock::now();
     if (!solver.IsSolved())
     {
         std::cout << "Board cannot be solved\n";
         return 1;
     }
-    std::cout << "Solved in " << index << " tries\n";
-    sf::RenderWindow window(sf::VideoMode(800, 800), "Sudoku Solver Visualizer");
-    RunClass(data, window, font);
+    using doubleMilliseconds = std::chrono::duration<double, std::milli>;
+    std::cout << "Solved in " << index << " tries and " << std::chrono::duration_cast<doubleMilliseconds>(end - start).count() << "ms\n";
+    // sf::RenderWindow window(sf::VideoMode(800, 800), "Sudoku Solver Visualizer");
+    // RunClass(data, window, font);
     return 0;
 }

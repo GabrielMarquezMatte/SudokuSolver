@@ -2,7 +2,7 @@
 #include <pcg_random.hpp>
 #include <benchmark/benchmark.h>
 #include "../include/SudokuMatrix.hpp"
-#include "../include/RandomSudoku.hpp"
+#include "../include/SudokuUtilities.hpp"
 #include "../include/solvers/BackTracking.hpp"
 
 static void BM_CreateBoard(benchmark::State &state)
@@ -11,7 +11,7 @@ static void BM_CreateBoard(benchmark::State &state)
     float probability = static_cast<float>(state.range(0)) / 100.0f;
     for (auto _ : state)
     {
-        SudokuMatrix board = CreateBoard(probability, rng);
+        SudokuMatrix board = CreateBoard<3>(probability, rng);
         benchmark::DoNotOptimize(board);
     }
 }
@@ -20,7 +20,7 @@ BENCHMARK(BM_CreateBoard)->DenseRange(10, 90, 20);
 
 static void BM_SolverStatic(benchmark::State &state)
 {
-    static constexpr std::array<char, SudokuSize> sudokuGame = {
+    static constexpr std::array<char, 81> sudokuGame = {
         5, 3, 0, 0, 7, 0, 0, 0, 0,
         6, 0, 0, 1, 9, 5, 0, 0, 0,
         0, 9, 8, 0, 0, 0, 0, 6, 0,
@@ -35,7 +35,7 @@ static void BM_SolverStatic(benchmark::State &state)
     std::int64_t index = 0;
     for (auto _ : state)
     {
-        BackTrackingSolver solver{sudokuGame};
+        BackTrackingSolver<3> solver{sudokuGame};
         while (solver.Advance())
         {
             index++;
@@ -51,11 +51,11 @@ static void BM_SolverRandom(benchmark::State &state)
     std::random_device device;
     pcg64 rng{device()};
     float probability = static_cast<float>(state.range(0)) / 100.0f;
-    SudokuMatrix sudokuGame = CreateBoard(probability, rng);
+    SudokuMatrix<3> sudokuGame = CreateBoard<3>(probability, rng);
     std::int64_t index = 0;
     for (auto _ : state)
     {
-        BackTrackingSolver solver{sudokuGame};
+        BackTrackingSolver<3> solver{sudokuGame};
         while (solver.Advance())
         {
             index++;

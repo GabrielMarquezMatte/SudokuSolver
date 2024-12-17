@@ -6,23 +6,26 @@ enum class AdvanceResult
     BackTracking,
     Finished
 };
+
+template<std::size_t N>
 class BackTrackingSolver
 {
 private:
-    SudokuMatrix m_data;
+    SudokuMatrix<N> m_data;
     std::size_t m_currentRow = 0;
     std::size_t m_currentCol = 0;
     AdvanceResult m_currentState = AdvanceResult::Continue;
     bool m_solved = false;
     inline constexpr bool AdvanceToNextCell()
     {
-        if (m_currentCol == SudokuColSize - 1 && m_currentRow == SudokuRowSize - 1)
+        constexpr std::size_t size = N * N;
+        if (m_currentCol == size - 1 && m_currentRow == size - 1)
         {
             m_currentState = AdvanceResult::Finished;
             m_solved = true;
             return false;
         }
-        if (++m_currentCol == SudokuColSize)
+        if (++m_currentCol == size)
         {
             m_currentCol = 0;
             m_currentRow++;
@@ -39,7 +42,8 @@ private:
         }
         if (m_currentCol == 0 && m_currentRow != 0)
         {
-            m_currentCol = SudokuColSize - 1;
+            constexpr std::size_t size = N * N;
+            m_currentCol = size - 1;
             m_currentRow--;
             return true;
         }
@@ -64,8 +68,8 @@ private:
 
 public:
     constexpr BackTrackingSolver() : m_data{} {}
-    constexpr BackTrackingSolver(const SudokuMatrix &data) : m_data(data) {}
-    constexpr BackTrackingSolver(SudokuMatrix &&data) : m_data(std::move(data)) {}
+    constexpr BackTrackingSolver(const SudokuMatrix<N> &data) : m_data(data) {}
+    constexpr BackTrackingSolver(SudokuMatrix<N> &&data) : m_data(std::move(data)) {}
     constexpr bool Advance()
     {
         if (m_solved)
@@ -73,17 +77,18 @@ public:
             m_currentState = AdvanceResult::Finished;
             return false;
         }
-        if (m_currentRow == SudokuRowSize)
+        constexpr std::size_t size = N * N;
+        if (m_currentRow == size)
         {
             m_solved = true;
             m_currentState = AdvanceResult::Finished;
             return false;
         }
-        std::size_t index = SudokuMatrix::MatrixIndex(m_currentRow, m_currentCol);
+        std::size_t index = SudokuMatrix<N>::MatrixIndex(m_currentRow, m_currentCol);
         if (m_currentState == AdvanceResult::BackTracking)
         {
             char value = m_data.GetValue(index) + 1;
-            std::size_t squareIndex = SudokuMatrix::SquareIndex(m_currentRow, m_currentCol);
+            std::size_t squareIndex = SudokuMatrix<N>::SquareIndex(m_currentRow, m_currentCol);
             m_data.RemoveValue(m_currentRow, m_currentCol, index, squareIndex);
             auto possibleValues = m_data.GetPossibleValues(m_currentRow, m_currentCol, squareIndex);
             for (auto possibility : possibleValues)
@@ -101,7 +106,7 @@ public:
         {
             return Continue();
         }
-        std::size_t squareIndex = SudokuMatrix::SquareIndex(m_currentRow, m_currentCol);
+        std::size_t squareIndex = SudokuMatrix<N>::SquareIndex(m_currentRow, m_currentCol);
         auto possibleValues = m_data.GetPossibleValues(m_currentRow, m_currentCol, squareIndex);
         if (possibleValues == 0)
         {
@@ -132,7 +137,7 @@ public:
     {
         return m_currentState;
     }
-    inline constexpr const SudokuMatrix &GetBoard() const
+    inline constexpr const SudokuMatrix<N> &GetBoard() const
     {
         return m_data;
     }

@@ -1,24 +1,27 @@
 #pragma once
 #include "./SudokuBits.hpp"
-#include "./constants.hpp"
 #include <bit>
+
+template<std::size_t N>
 class SudokuMatrix
 {
 private:
-    std::array<char, SudokuSize> m_data;
-    SudokuBits m_dataBits;
+    std::array<char, N * N * N * N> m_data;
+    SudokuBits<N> m_dataBits;
 
 
 public:
     static inline constexpr std::size_t SquareIndex(std::size_t row, std::size_t col)
     {
-        std::size_t squareRow = row / SudokuSquareSize;
-        std::size_t squareCol = col / SudokuSquareSize;
-        return squareRow * SudokuSquareSize + squareCol;
+        constexpr std::size_t squareSize = N;
+        std::size_t squareRow = row / squareSize;
+        std::size_t squareCol = col / squareSize;
+        return squareRow * squareSize + squareCol;
     }
     static inline constexpr std::size_t MatrixIndex(const std::size_t row, const std::size_t col)
     {
-        return row * SudokuRowSize + col;
+        constexpr std::size_t rowSize = N * N;
+        return row * rowSize + col;
     }
 
     constexpr SudokuMatrix() : m_dataBits({}), m_data({})
@@ -26,12 +29,13 @@ public:
         m_data.fill(0);
     }
 
-    constexpr SudokuMatrix(const std::array<char, SudokuSize> &data) : m_data(data), m_dataBits({})
+    constexpr SudokuMatrix(const std::array<char, N * N * N * N> &data) : m_data(data), m_dataBits({})
     {
+        constexpr std::size_t size = N * N;
         // Inicializa os bitsets para marcar os valores presentes na matriz inicial
-        for (std::size_t row = 0; row < SudokuRowSize; ++row)
+        for (std::size_t row = 0; row < size; ++row)
         {
-            for (std::size_t col = 0; col < SudokuColSize; ++col)
+            for (std::size_t col = 0; col < size; ++col)
             {
                 char value = data[MatrixIndex(row, col)];
                 if (value == 0)
@@ -45,19 +49,19 @@ public:
         }
     }
 
-    constexpr SudokuMatrix(const SudokuMatrix &other)
+    constexpr SudokuMatrix(const SudokuMatrix<N> &other)
         : m_data(other.m_data),
         m_dataBits(other.m_dataBits)
     {
     }
 
-    constexpr SudokuMatrix(SudokuMatrix &&other) noexcept
+    constexpr SudokuMatrix(SudokuMatrix<N> &&other) noexcept
         : m_data(std::move(other.m_data)),
           m_dataBits(std::move(other.m_dataBits))
     {
     }
 
-    constexpr SudokuMatrix &operator=(const SudokuMatrix &other)
+    constexpr SudokuMatrix<N> &operator=(const SudokuMatrix<N> &other)
     {
         if (this == &other)
         {
@@ -68,7 +72,7 @@ public:
         return *this;
     }
 
-    constexpr SudokuMatrix &operator=(SudokuMatrix &&other) noexcept
+    constexpr SudokuMatrix<N> &operator=(SudokuMatrix<N> &&other) noexcept
     {
         if (this != &other) // Evita a auto-atribuição
         {
@@ -127,10 +131,13 @@ public:
     struct PossibleValuesIterator
     {
     private:
-        std::uint16_t m_flag;
+        using FlagType = std::conditional_t<(N * N <= 8), std::uint8_t,
+            std::conditional_t<(N * N <= 16), std::uint16_t,
+                std::conditional_t<(N * N <= 32), std::uint32_t, std::uint64_t>>>;
+        FlagType m_flag;
 
     public:
-        constexpr PossibleValuesIterator(std::uint16_t flag) : m_flag(flag) {}
+        constexpr PossibleValuesIterator(FlagType flag) : m_flag(flag) {}
         // Iterator functions
         inline constexpr PossibleValuesIterator &operator++()
         {
@@ -141,7 +148,7 @@ public:
         inline constexpr char operator*() const
         {
             // Get the least significant set bit
-            std::uint16_t newValue = m_flag & -static_cast<std::int16_t>(m_flag);
+            FlagType newValue = m_flag & -static_cast<std::make_signed_t<FlagType>>(m_flag);
             int count = std::countr_zero(newValue);
             return static_cast<char>(count + 1);
         }
@@ -149,7 +156,7 @@ public:
         {
             return m_flag != other.m_flag;
         }
-        inline constexpr bool operator==(const std::uint16_t value) const
+        inline constexpr bool operator==(const FlagType value) const
         {
             return m_flag == value;
         }

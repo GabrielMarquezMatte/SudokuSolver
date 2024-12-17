@@ -72,6 +72,14 @@
         "regex": "cpp",
         "stop_token": "cpp",
         "thread": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "any": "cpp",
+        "csignal": "cpp",
+        "functional": "cpp",
+        "list": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "variant": "cpp",
+        "xhash": "cpp"
     }
 }

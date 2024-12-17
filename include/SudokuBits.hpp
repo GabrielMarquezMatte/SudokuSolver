@@ -1,35 +1,42 @@
 #pragma once
 #include <array>
+
+template<std::size_t N>
 struct SudokuBits
 {
 private:
-    std::array<std::uint16_t, 27> m_bits;
+    using FlagType = std::conditional_t<(N * N <= 8), std::uint8_t,
+            std::conditional_t<(N * N <= 16), std::uint16_t,
+                std::conditional_t<(N * N <= 32), std::uint32_t, std::uint64_t>>>;
+    std::array<FlagType, N * N * 3> m_bits;
+    static constexpr std::size_t size = N * N;
+    static constexpr FlagType AllBitsSet = (1 << size) - 1;
 public:
     inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t square, char value)
     {
-        std::uint16_t mask = 1 << (value - 1);
+        FlagType mask = 1 << (value - 1);
         m_bits[row] |= mask;
-        m_bits[9 + col] |= mask;
-        m_bits[18 + square] |= mask;
+        m_bits[size + col] |= mask;
+        m_bits[size * 2 + square] |= mask;
     }
 
     inline constexpr void ResetValue(std::size_t row, std::size_t col, std::size_t square, char value)
     {
-        std::uint16_t mask = ~(1 << (value - 1));
+        FlagType mask = ~(1 << (value - 1));
         m_bits[row] &= mask;
-        m_bits[9 + col] &= mask;
-        m_bits[18 + square] &= mask;
+        m_bits[size + col] &= mask;
+        m_bits[size * 2 + square] &= mask;
     }
 
     inline constexpr bool Test(std::size_t row, std::size_t col, std::size_t square, char value) const
     {
-        std::uint16_t mask = 1 << (value - 1);
-        return (m_bits[row] & mask) != 0 && (m_bits[9 + col] & mask) != 0 && (m_bits[18 + square] & mask) != 0;
+        FlagType mask = 1 << (value - 1);
+        return (m_bits[row] & mask) != 0 && (m_bits[size + col] & mask) != 0 && (m_bits[size * 2 + square] & mask) != 0;
     }
 
-    inline constexpr std::uint16_t GetAvailableValues(std::size_t row, std::size_t col, std::size_t square) const
+    inline constexpr FlagType GetAvailableValues(std::size_t row, std::size_t col, std::size_t square) const
     {
-        std::uint16_t usedBits = m_bits[row] | m_bits[9 + col] | m_bits[18 + square];
-        return static_cast<std::uint16_t>(~usedBits & 0x1FF);
+        FlagType usedBits = m_bits[row] | m_bits[size + col] | m_bits[size * 2 + square];
+        return static_cast<FlagType>(~usedBits & AllBitsSet);
     }
 };

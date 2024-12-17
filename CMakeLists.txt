@@ -19,6 +19,8 @@ endif()
 
 include(${PROJECT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
+add_subdirectory(tests)
+
 find_package(SFML COMPONENTS system window graphics audio CONFIG REQUIRED)
 find_package(benchmark CONFIG REQUIRED)
 find_path(PCG_INCLUDE_DIRS "pcg_extras.hpp")
