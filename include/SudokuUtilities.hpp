@@ -1,3 +1,4 @@
+#pragma once
 #include <random>
 #include <pcg_random.hpp>
 #include "./SudokuMatrix.hpp"
@@ -39,9 +40,10 @@ SudokuMatrix<N> CreateBoard(const float probabilityOfFilled, pcg64 &randomDevice
 }
 
 template<std::size_t N>
-inline constexpr bool IsValidSudoku(SudokuMatrix<N> &board)
+constexpr bool IsValidSudoku(const SudokuMatrix<N> &board)
 {
     constexpr std::size_t size = N * N;
+    SudokuMatrix<N> testBoard = {};
     for (std::size_t row = 0; row < size; ++row)
     {
         for (std::size_t col = 0; col < size; ++col)
@@ -51,10 +53,11 @@ inline constexpr bool IsValidSudoku(SudokuMatrix<N> &board)
             {
                 continue;
             }
-            if (!board.IsValidPlay(value, row, col))
+            if (!testBoard.IsValidPlay(value, row, col))
             {
                 return false;
             }
+            testBoard.SetValue(row, col, value);
         }
     }
     return true;

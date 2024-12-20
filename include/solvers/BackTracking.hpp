@@ -1,14 +1,10 @@
 #pragma once
+#include "./StateMachineStatus.hpp"
 #include "../SudokuMatrix.hpp"
-enum class AdvanceResult
-{
-    Continue,
-    BackTracking,
-    Finished
-};
+#include "./ISolver.hpp"
 
 template<std::size_t N>
-class BackTrackingSolver
+class BackTrackingSolver : ISolver<N>
 {
 private:
     SudokuMatrix<N> m_data;
@@ -70,7 +66,7 @@ public:
     constexpr BackTrackingSolver() : m_data{} {}
     constexpr BackTrackingSolver(const SudokuMatrix<N> &data) : m_data(data) {}
     constexpr BackTrackingSolver(SudokuMatrix<N> &&data) : m_data(std::move(data)) {}
-    constexpr bool Advance()
+    constexpr bool Advance() override
     {
         if (m_solved)
         {
@@ -115,15 +111,15 @@ public:
         m_data.SetValue(m_currentRow, m_currentCol, index, squareIndex, *possibleValues);
         return Continue();
     }
-    inline constexpr const AdvanceResult GetStatus() const
+    inline constexpr AdvanceResult GetStatus() const override
     {
         return m_currentState;
     }
-    inline constexpr const SudokuMatrix<N> &GetBoard() const
+    inline constexpr const SudokuMatrix<N> &GetBoard() const override
     {
         return m_data;
     }
-    inline constexpr bool IsSolved() const
+    inline constexpr bool IsSolved() const override
     {
         return m_solved;
     }
