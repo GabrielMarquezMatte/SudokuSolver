@@ -115,24 +115,6 @@ public:
         m_data.SetValue(m_currentRow, m_currentCol, index, squareIndex, *possibleValues);
         return Continue();
     }
-    constexpr bool Retreat()
-    {
-        // Se já estamos no início da resolução, não podemos retroceder mais
-        if (m_currentRow == 0 && m_currentCol == 0 && m_data.GetValue(m_currentRow, m_currentCol) == 0)
-        {
-            return false; // Não há mais nada para retroceder
-        }
-
-        m_data.RemoveValue(m_currentRow, m_currentCol);
-        // Retrocede para a célula anterior
-        RetreatToPreviousCell();
-        if (m_currentRow == 0 && m_currentCol == 0)
-        {
-            return false;
-        }
-        m_currentState = AdvanceResult::BackTracking;
-        return true; // Ainda há células para retroceder
-    }
     inline constexpr const AdvanceResult GetStatus() const
     {
         return m_currentState;
