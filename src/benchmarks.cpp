@@ -4,6 +4,7 @@
 #include "../include/SudokuMatrix.hpp"
 #include "../include/SudokuUtilities.hpp"
 #include "../include/solvers/BackTracking.hpp"
+#include "../include/solvers/DlxSolver.hpp"
 
 static void BM_CreateBoard(benchmark::State &state)
 {
@@ -18,6 +19,7 @@ static void BM_CreateBoard(benchmark::State &state)
 
 BENCHMARK(BM_CreateBoard)->DenseRange(10, 90, 20);
 
+template<typename Solver = BackTrackingSolver<3>>
 static void BM_SolverStatic(benchmark::State &state)
 {
     static constexpr std::array<char, 81> sudokuGame = {
@@ -35,7 +37,7 @@ static void BM_SolverStatic(benchmark::State &state)
     std::int64_t index = 0;
     for (auto _ : state)
     {
-        BackTrackingSolver<3> solver{sudokuGame};
+        Solver solver{sudokuGame};
         while (solver.Advance())
         {
             index++;
@@ -44,8 +46,10 @@ static void BM_SolverStatic(benchmark::State &state)
     state.SetItemsProcessed(index);
 }
 
-BENCHMARK(BM_SolverStatic);
+BENCHMARK(BM_SolverStatic<BackTrackingSolver<3>>);
+BENCHMARK(BM_SolverStatic<DLXSolver<3>>);
 
+template <typename Solver = BackTrackingSolver<3>>
 static void BM_SolverRandom(benchmark::State &state)
 {
     std::random_device device;
@@ -53,17 +57,30 @@ static void BM_SolverRandom(benchmark::State &state)
     float probability = static_cast<float>(state.range(0)) / 100.0f;
     SudokuMatrix<3> sudokuGame = CreateBoard<3>(probability, rng);
     std::int64_t index = 0;
+    bool breakAll = false;
     for (auto _ : state)
     {
-        BackTrackingSolver<3> solver{sudokuGame};
+        Solver solver{sudokuGame};
+        std::size_t innerIndex = 0;
         while (solver.Advance())
         {
-            index++;
+            innerIndex++;
+            if (innerIndex == 10'000'000)
+            {
+                breakAll = true;
+                break;
+            }
+        }
+        index += innerIndex;
+        if (breakAll)
+        {
+            break;
         }
     }
     state.SetItemsProcessed(index);
 }
 
-BENCHMARK(BM_SolverRandom)->DenseRange(30, 50, 5);
+BENCHMARK(BM_SolverRandom<DLXSolver<3>>)->DenseRange(30, 50, 5);
+BENCHMARK(BM_SolverRandom<BackTrackingSolver<3>>)->DenseRange(30, 50, 5);
 
 BENCHMARK_MAIN();

@@ -4,7 +4,7 @@
 #include "./ISolver.hpp"
 
 template<std::size_t N>
-class BackTrackingSolver : ISolver<N>
+class BackTrackingSolver : public ISolver<N>
 {
 private:
     SudokuMatrix<N> m_data;

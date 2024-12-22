@@ -8,7 +8,7 @@
 #include "../include/solvers/DlxSolver.hpp"
 #include "../include/SudokuUtilities.hpp"
 
-static constexpr std::size_t CellSize = 48;
+static constexpr std::size_t CellSize = 40;
 
 template <std::size_t N>
 static void DrawLines(sf::RenderWindow &window)
@@ -134,6 +134,33 @@ static bool RunClass(const SudokuMatrix<N> &matrix, sf::RenderWindow &window, sf
     return solver.IsSolved();
 }
 
+template <std::size_t N>
+using Solver = BackTrackingSolver<N>;
+
+template <std::size_t N>
+SudokuMatrix<N> GetPossibleMatrix(float probability, pcg64 &rng)
+{
+    while (true)
+    {
+        SudokuMatrix<N> data = CreateBoard<N>(probability, rng);
+        Solver solver{data};
+        std::size_t index = 0;
+        while (solver.Advance())
+        {
+            index++;
+            if (index % 20'000'000 == 0)
+            {
+                break;
+            }
+        }
+        if (!solver.IsSolved() || !IsValidSudoku(solver.GetBoard()))
+        {
+            continue;
+        }
+        return data;
+    }
+}
+
 int main(int, char **)
 {
     sf::Font font;
@@ -141,7 +168,7 @@ int main(int, char **)
     {
         return -1; // Erro ao carregar fonte
     }
-    static constexpr std::size_t size = 3;
+    static constexpr std::size_t size = 4;
     // static constexpr std::array<char, 81> sudokuGame = {
     //     5, 3, 0, 0, 7, 0, 0, 0, 0,
     //     6, 0, 0, 1, 9, 5, 0, 0, 0,
@@ -156,40 +183,10 @@ int main(int, char **)
     //     0, 0, 0, 0, 8, 0, 0, 7, 9};
     std::random_device device;
     pcg64 rng{device()};
-    static constexpr float probability = 0.35f;
-    SudokuMatrix data = CreateBoard<size>(probability, rng);
-    bool canBeSolved = false;
-    // static constexpr SudokuMatrix<3> data{sudokuGame};
-    using doubleMilliseconds = std::chrono::duration<double, std::milli>;
-    std::size_t tries = 0;
-    auto startTries = std::chrono::high_resolution_clock::now();
-    while (!canBeSolved)
-    {
-        tries++;
-        DLXSolver solver{data};
-        std::size_t index = 0;
-        auto start = std::chrono::high_resolution_clock::now();
-        while (solver.Advance())
-        {
-            index++;
-        }
-        auto end = std::chrono::high_resolution_clock::now();
-        if (!solver.IsSolved())
-        {
-            data = CreateBoard<size>(probability, rng);
-            continue;
-        }
-        if (!IsValidSudoku(solver.GetBoard()))
-        {
-            data = CreateBoard<size>(probability, rng);
-            continue;
-        }
-        std::cout << "Solved in " << index << " tries and " << std::chrono::duration_cast<doubleMilliseconds>(end - start).count() << "ms\n";
-        canBeSolved = true;
-    }
-    auto endTries = std::chrono::high_resolution_clock::now();
-    std::cout << "Tries: " << tries << " in " << std::chrono::duration_cast<doubleMilliseconds>(endTries - startTries).count() << "ms\n";
+    static constexpr float probability = 0.25f;
+    SudokuMatrix data = GetPossibleMatrix<size>(probability, rng);
+    auto start = std::chrono::high_resolution_clock::now();
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Sudoku Solver Visualizer");
-    RunClass<size, DLXSolver<size>>(data, window, font);
+    RunClass<size, Solver<size>>(data, window, font);
     return 0;
 }

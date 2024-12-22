@@ -1,53 +1,5 @@
 #pragma once
 #include "./SudokuBits.hpp"
-#include <bit>
-
-template <std::size_t N>
-struct PossibleValuesIterator
-{
-private:
-    using FlagType = std::conditional_t<(N * N <= 8), std::uint8_t,
-                                        std::conditional_t<(N * N <= 16), std::uint16_t,
-                                                           std::conditional_t<(N * N <= 32), std::uint32_t, std::uint64_t>>>;
-    FlagType m_flag;
-
-public:
-    constexpr PossibleValuesIterator(FlagType flag) : m_flag(flag) {}
-    // Iterator functions
-    inline constexpr PossibleValuesIterator &operator++()
-    {
-        // Remove the least significant set bit
-        m_flag &= (m_flag - 1);
-        return *this;
-    }
-    inline constexpr char operator*() const
-    {
-        // Get the least significant set bit
-        FlagType newValue = m_flag & -static_cast<std::make_signed_t<FlagType>>(m_flag);
-        int count = std::countr_zero(newValue);
-        return static_cast<char>(count + 1);
-    }
-    inline constexpr bool operator!=(const PossibleValuesIterator<N> &other) const
-    {
-        return m_flag != other.m_flag;
-    }
-    inline constexpr bool operator==(const FlagType value) const
-    {
-        return m_flag == value;
-    }
-    inline constexpr PossibleValuesIterator<N> begin()
-    {
-        return {m_flag};
-    }
-    static inline constexpr PossibleValuesIterator<N> end()
-    {
-        return {0};
-    }
-    inline constexpr int Count() const
-    {
-        return std::popcount(m_flag);
-    }
-};
 
 template <std::size_t N>
 class SudokuMatrix
@@ -57,7 +9,7 @@ private:
     SudokuBits<N> m_dataBits;
 
 public:
-    static inline constexpr std::size_t SquareIndex(std::size_t row, std::size_t col)
+    static inline constexpr std::size_t SquareIndex(const std::size_t row, const std::size_t col)
     {
         constexpr std::size_t squareSize = N;
         std::size_t squareRow = row / squareSize;
@@ -174,12 +126,12 @@ public:
         return IsValidPlay(value, row, col, SquareIndex(row, col));
     }
 
-    inline constexpr PossibleValuesIterator<N> GetPossibleValues(std::size_t row, std::size_t col, std::size_t squareIndex) const
+    inline constexpr BitSetIterator<N> GetPossibleValues(std::size_t row, std::size_t col, std::size_t squareIndex) const
     {
         return {m_dataBits.GetAvailableValues(row, col, squareIndex)};
     }
 
-    inline constexpr PossibleValuesIterator<N> GetPossibleValues(std::size_t row, std::size_t col) const
+    inline constexpr BitSetIterator<N> GetPossibleValues(std::size_t row, std::size_t col) const
     {
         return GetPossibleValues(row, col, SquareIndex(row, col));
     }

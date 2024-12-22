@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <span>
 #include "./StateMachineStatus.hpp"
 #include "./ISolver.hpp"
 #include "../SudokuMatrix.hpp"
@@ -21,13 +22,13 @@ struct DLXColumn : public DLXNode
 };
 struct Placement
 {
-    int row;
-    int col;
-    int digit;
+    std::size_t row;
+    std::size_t col;
+    char digit;
 };
 
 template <std::size_t N>
-class DLXSolver : ISolver<N>
+class DLXSolver : public ISolver<N>
 {
 private:
     SudokuMatrix<N> m_data;
@@ -89,13 +90,31 @@ private:
         return best;
     }
 
-    Placement DecodePlacement(DLXNode *rowNode)
+    constexpr std::pair<std::size_t, std::size_t> GetRowColIndices(const std::span<const std::size_t> indices)
     {
         constexpr std::size_t size = N * N;
         constexpr std::size_t sizeSquared = size * size;
         constexpr std::size_t doubleSizeSquared = 2 * sizeSquared;
-        constexpr int sizeInt = static_cast<int>(size);
-        constexpr int sizeSquaredInt = sizeInt * sizeInt;
+        std::size_t cellColIndex = std::numeric_limits<std::size_t>::min();
+        std::size_t rowColIndex = std::numeric_limits<std::size_t>::min();
+        for (const std::size_t ci : indices)
+        {
+            if (ci < sizeSquared)
+            {
+                cellColIndex = ci;
+            }
+            else if (ci >= sizeSquared && ci < doubleSizeSquared)
+            {
+                rowColIndex = ci;
+            }
+        }
+        return {cellColIndex, rowColIndex};
+    }
+
+    constexpr Placement DecodePlacement(DLXNode *rowNode)
+    {
+        static constexpr std::size_t size = N * N;
+        static constexpr std::size_t sizeSquared = size * size;
 
         std::vector<std::size_t> colIndices;
         DLXNode *cur = rowNode;
@@ -107,70 +126,47 @@ private:
         } while (cur != rowNode);
 
         // Find cell and row columns
-        int cellColIndex = -1;
-        int rowColIndex = -1;
-        for (auto ci : colIndices)
-        {
-            if (ci < sizeSquared)
-            {
-                cellColIndex = (int)ci;
-            }
-            else if (ci >= sizeSquared && ci < doubleSizeSquared)
-            {
-                rowColIndex = (int)ci;
-            }
-        }
-
-        int r = cellColIndex / sizeInt;
-        int c = cellColIndex % sizeInt;
-        int d = (rowColIndex - sizeSquaredInt) % sizeInt + 1;
-
+        auto [cellColIndex, rowColIndex] = GetRowColIndices(colIndices);
+        std::size_t r = cellColIndex / size;
+        std::size_t c = cellColIndex % size;
+        char d = static_cast<char>((rowColIndex - sizeSquared) % size + 1);
         return {r, c, d};
     }
 
-    void FinalizeSolution()
+    inline constexpr void FinalizeSolution()
     {
-        constexpr std::size_t size = N * N;
-        constexpr std::size_t sizeSquared = size * size;
-        constexpr std::size_t doubleSizeSquared = 2 * sizeSquared;
-        for (auto rowNode : m_solutionStack)
+        for (const auto rowNode : m_solutionStack)
         {
-            // Gather all column indices of this row
-            std::vector<std::size_t> colIndices;
-            DLXNode *cur = rowNode;
-            do
-            {
-                DLXColumn *col = static_cast<DLXColumn *>(cur->column);
-                std::size_t colIndex = col->index;
-                colIndices.push_back(colIndex);
-                cur = cur->right;
-            } while (cur != rowNode);
-
-            // Now find the cellCol and rowCol
-            int cellColIndex = -1;
-            int rowColIndex = -1;
-            for (std::size_t ci : colIndices)
-            {
-                if (ci < sizeSquared)
-                {
-                    cellColIndex = static_cast<int>(ci); // cell constraint col
-                }
-                else if (ci >= sizeSquared && ci < doubleSizeSquared)
-                {
-                    rowColIndex = static_cast<int>(ci); // row-digit constraint col
-                }
-            }
-
-            // Decode r, c from cellColIndex
-            int r = cellColIndex / size;
-            int c = cellColIndex % size;
-
-            // Decode d from rowColIndex
-            int d = (rowColIndex - static_cast<int>(sizeSquared)) % size + 1;
-
-            // Set the value in the SudokuMatrix
-            m_data.SetValue(r, c, static_cast<char>(d));
+            auto [r, c, d] = DecodePlacement(rowNode);
+            m_data.SetValue(r, c, d);
         }
+    }
+
+    inline constexpr BitSetIterator<N> GetCandidates(std::size_t row, std::size_t column)
+    {
+        char val = m_data.GetValue(row, column);
+        if (val != 0)
+        {
+            typename BitSetIterator<N>::FlagType value = val - 1;
+            return {static_cast<BitSetIterator<N>::FlagType>(1ULL << value)};
+        }
+        return m_data.GetPossibleValues(row, column);
+    }
+
+    inline DLXColumn* InitializeColumn(DLXColumn* header, std::size_t index)
+    {
+        DLXColumn *col = new DLXColumn;
+        col->column = col;
+        col->size = 0;
+        col->index = index;
+        // Insert col right of header
+        col->right = header;
+        col->left = header->left;
+        header->left->right = col;
+        header->left = col;
+        col->up = col;
+        col->down = col;
+        return col;
     }
 
 public:
@@ -185,6 +181,7 @@ public:
         // Insert nodes accordingly.
         // Set m_header to the main header node of the DLX structure.
         constexpr std::size_t size = N * N;
+        constexpr std::size_t squaredSize = size * size;
         constexpr std::size_t totalCols = 4 * size * size;
 
         // Create column headers + header node
@@ -195,21 +192,10 @@ public:
         m_header->size = 0; // not really used for header
 
         // Create an array of column headers
-        std::vector<DLXColumn *> columns(totalCols, nullptr);
+        std::array<DLXColumn *, totalCols> columns;
         for (std::size_t i = 0; i < totalCols; i++)
         {
-            DLXColumn *col = new DLXColumn;
-            col->column = col;
-            col->size = 0;
-            col->index = i;
-            // Insert col right of m_header
-            col->right = m_header;
-            col->left = m_header->left;
-            m_header->left->right = col;
-            m_header->left = col;
-            col->up = col;
-            col->down = col;
-            columns[i] = col;
+            columns[i] = InitializeColumn(m_header, i);
         }
 
         // Function to get box index from (r,c)
@@ -221,38 +207,17 @@ public:
         // For each cell and each possible digit, add row nodes if valid
         // If cell is pre-filled with digit d, only that (r,c,d) will be considered.
         // If cell is empty, consider all possible digits that don't violate given constraints.
-        for (std::size_t r = 0; r < size; r++)
+        for (std::size_t row = 0; row < size; row++)
         {
-            for (std::size_t c = 0; c < size; c++)
+            for (std::size_t column = 0; column < size; column++)
             {
-                char val = m_data.GetValue(r, c);
-                std::vector<char> candidates;
-
-                if (val != 0)
-                {
-                    // Cell is fixed with digit val
-                    candidates.push_back(val);
-                }
-                else
-                {
-                    // Cell is empty - gather all possible digits
-                    // Use SudokuMatrix method or logic to find allowed digits
-                    // For demonstration, assume digits 1..size are all possible.
-                    // In practice, use m_data.GetPossibleValues(...) or equivalent.
-                    auto possibleValues = m_data.GetPossibleValues(r, c);
-                    for (auto d : possibleValues)
-                    {
-                        candidates.push_back(d);
-                    }
-                }
-
-                for (char d : candidates)
+                for (char d : GetCandidates(row, column))
                 {
                     // Compute column indices for this candidate (r,c,d)
-                    std::size_t cellCol = r * size + c;
-                    std::size_t rowCol = size * size + r * size + (d - 1);
-                    std::size_t colCol = 2 * size * size + c * size + (d - 1);
-                    std::size_t boxCol = 3 * size * size + boxIndex(r, c) * size + (d - 1);
+                    std::size_t cellCol = row * size + column;
+                    std::size_t rowCol = squaredSize + row * size + (d - 1);
+                    std::size_t colCol = 2 * squaredSize + column * size + (d - 1);
+                    std::size_t boxCol = 3 * squaredSize + boxIndex(row, column) * size + (d - 1);
 
                     // Create 4 nodes for this row
                     DLXNode *n1 = new DLXNode;
