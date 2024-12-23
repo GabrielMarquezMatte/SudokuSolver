@@ -63,10 +63,10 @@ static void DrawNumbers(const SudokuMatrix<N> &board, sf::RenderWindow &window, 
     }
 }
 
-template <std::size_t N, typename Solver = ISolver<N>>
+template <std::size_t N, template <std::size_t> class Solver, typename std::enable_if<std::is_base_of<ISolver<N>, Solver<N>>::value>::type * = nullptr>
 static bool RunClass(const SudokuMatrix<N> &matrix, sf::RenderWindow &window, sf::Font &font)
 {
-    Solver solver{matrix};
+    Solver<N> solver{matrix};
     std::size_t index = 0;
     while (solver.Advance() && window.isOpen())
     {
@@ -161,14 +161,21 @@ SudokuMatrix<N> GetPossibleMatrix(float probability, pcg64 &rng)
     }
 }
 
-int main(int, char **)
+template <std::size_t N>
+void Run(const float probability, pcg64 &rng, sf::Font &font)
+{
+    SudokuMatrix<N> data = GetPossibleMatrix<N>(probability, rng);
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Sudoku Solver Visualizer");
+    RunClass<N, Solver>(data, window, font);
+}
+
+int main(int argc, char **argv)
 {
     sf::Font font;
     if (!font.loadFromFile("arial.ttf"))
     {
         return -1; // Erro ao carregar fonte
     }
-    static constexpr std::size_t size = 4;
     // static constexpr std::array<char, 81> sudokuGame = {
     //     5, 3, 0, 0, 7, 0, 0, 0, 0,
     //     6, 0, 0, 1, 9, 5, 0, 0, 0,
@@ -181,12 +188,40 @@ int main(int, char **)
     //     0, 6, 0, 0, 0, 0, 2, 8, 0,
     //     0, 0, 0, 4, 1, 9, 0, 0, 5,
     //     0, 0, 0, 0, 8, 0, 0, 7, 9};
+    if (argc != 2)
+    {
+        std::cerr << "Usage: " << argv[0] << " <size>\n";
+        return 1;
+    }
+    std::size_t userSize = std::stoul(argv[1]);
     std::random_device device;
     pcg64 rng{device()};
-    static constexpr float probability = 0.25f;
-    SudokuMatrix data = GetPossibleMatrix<size>(probability, rng);
-    auto start = std::chrono::high_resolution_clock::now();
-    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Sudoku Solver Visualizer");
-    RunClass<size, Solver<size>>(data, window, font);
+    static constexpr float probability = 0.3f;
+    switch (userSize)
+    {
+    case 2:
+    {
+        Run<2>(probability, rng, font);
+        break;
+    }
+    case 3:
+    {
+        Run<3>(probability, rng, font);
+        break;
+    }
+    case 4:
+    {
+        Run<4>(probability, rng, font);
+        break;
+    }
+    case 5:
+    {
+        Run<5>(probability, rng, font);
+        break;
+    }
+    default:
+        std::cerr << "Invalid size\n";
+        return 1;
+    }
     return 0;
 }
