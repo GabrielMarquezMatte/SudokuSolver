@@ -31,7 +31,7 @@ SudokuMatrix<N> CreateBoard(const float probabilityOfFilled, pcg64 &randomDevice
             {
                 ++possibleValues;
             }
-            char value = *possibleValues;
+            auto value = *possibleValues;
             board.SetValue(row, col, value);
         }
     }
@@ -54,18 +54,18 @@ DynamicSudokuMatrix CreateBoard(const std::size_t size, const float probabilityO
                 continue;
             }
             auto possibleValues = board.GetPossibleValues(row, col);
-            if (possibleValues.Count() == 0)
+            std::size_t count = possibleValues.Count();
+            if (count == 0)
             {
                 continue;
             }
-            std::size_t count = possibleValues.Count();
-            std::uniform_int_distribution<int> indexDist(0, static_cast<int>(count - 1));
-            int index = indexDist(randomDevice);
-            for (int i = 0; i < index; ++i)
+            std::uniform_int_distribution<std::size_t> indexDist(0, count - 1);
+            std::size_t index = indexDist(randomDevice);
+            for (std::size_t i = 0; i < index; ++i)
             {
                 ++possibleValues;
             }
-            char value = *possibleValues;
+            auto value = *possibleValues;
             board.SetValue(row, col, value);
         }
     }
@@ -81,7 +81,7 @@ constexpr bool IsValidSudoku(const SudokuMatrix<N> &board)
     {
         for (std::size_t col = 0; col < size; ++col)
         {
-            char value = board.GetValue(row, col);
+            typename SudokuMatrix<N>::DataType value = board.GetValue(row, col);
             if (value == 0)
             {
                 continue;
@@ -104,7 +104,7 @@ bool IsValidSudoku(const DynamicSudokuMatrix &board)
     {
         for (std::size_t col = 0; col < size; ++col)
         {
-            char value = board.GetValue(row, col);
+            DynamicSudokuMatrix::DataType value = board.GetValue(row, col);
             if (value == 0)
             {
                 continue;

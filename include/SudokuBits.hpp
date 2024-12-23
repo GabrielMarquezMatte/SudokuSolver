@@ -10,6 +10,7 @@ public:
     using FlagType = std::conditional_t<(N * N <= 8), std::uint8_t,
                                         std::conditional_t<(N * N <= 16), std::uint16_t,
                                                            std::conditional_t<(N * N <= 32), std::uint32_t, std::uint64_t>>>;
+    using DataType = std::uint8_t;
 
 private:
     FlagType m_flag;
@@ -23,12 +24,12 @@ public:
         m_flag &= (m_flag - 1);
         return *this;
     }
-    inline constexpr char operator*() const
+    inline constexpr DataType operator*() const
     {
         // Get the least significant set bit
         FlagType newValue = m_flag & -static_cast<std::make_signed_t<FlagType>>(m_flag);
         int count = std::countr_zero(newValue);
-        return static_cast<char>(count + 1);
+        return static_cast<DataType>(count + 1);
     }
     inline constexpr bool operator!=(const BitSetIterator<N> &other) const
     {
@@ -54,6 +55,8 @@ public:
 
 struct DynamicBitSetIterator
 {
+public:
+    using DataType = std::uint8_t;
 private:
     using size_type = boost::dynamic_bitset<>::size_type;
     size_type m_index;
@@ -71,9 +74,9 @@ public:
         m_count--;
         return *this;
     }
-    inline char operator*() const
+    inline DataType operator*() const
     {
-        return static_cast<char>(m_index + 1);
+        return static_cast<DataType>(m_index + 1);
     }
     inline bool operator!=(const DynamicBitSetIterator &other) const
     {
@@ -97,14 +100,15 @@ template <std::size_t N>
 struct SudokuBits
 {
 public:
-    using FlagType = BitSetIterator<N>::FlagType;
+    using FlagType = typename BitSetIterator<N>::FlagType;
+    using DataType = typename BitSetIterator<N>::DataType;
 private:
     std::array<FlagType, N * N * 3> m_bits;
     static constexpr std::size_t size = N * N;
     static constexpr FlagType AllBitsSet = (1ULL << size) - 1;
 
 public:
-    inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t square, DataType value)
     {
         FlagType mask = 1ULL << (value - 1);
         m_bits[row] |= mask;
@@ -112,7 +116,7 @@ public:
         m_bits[size * 2 + square] |= mask;
     }
 
-    inline constexpr void ResetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    inline constexpr void ResetValue(std::size_t row, std::size_t col, std::size_t square, DataType value)
     {
         FlagType mask = ~(1 << (value - 1));
         m_bits[row] &= mask;
@@ -120,7 +124,7 @@ public:
         m_bits[size * 2 + square] &= mask;
     }
 
-    inline constexpr bool Test(std::size_t row, std::size_t col, std::size_t square, char value) const
+    inline constexpr bool Test(std::size_t row, std::size_t col, std::size_t square, DataType value) const
     {
         FlagType mask = 1ULL << (value - 1);
         return (m_bits[row] & mask) != 0 && (m_bits[size + col] & mask) != 0 && (m_bits[size * 2 + square] & mask) != 0;
@@ -140,6 +144,8 @@ public:
 
 struct SudokuDynamicBits
 {
+public:
+    using DataType = typename DynamicBitSetIterator::DataType;
 private:
     std::size_t m_size;
     std::vector<boost::dynamic_bitset<>> m_bits;
@@ -150,7 +156,7 @@ public:
     {
         m_allBitsSet.set();
     }
-    inline void SetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    inline void SetValue(std::size_t row, std::size_t col, std::size_t square, DataType value)
     {
         assert(value >= 1 && value <= m_size);
         std::size_t index = static_cast<std::size_t>(value - 1);
@@ -158,7 +164,7 @@ public:
         m_bits[m_size + col].set(index);
         m_bits[m_size * 2 + square].set(index);
     }
-    inline void ResetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    inline void ResetValue(std::size_t row, std::size_t col, std::size_t square, DataType value)
     {
         assert(value >= 1 && value <= m_size);
         std::size_t index = static_cast<std::size_t>(value - 1);
@@ -166,7 +172,7 @@ public:
         m_bits[m_size + col].reset(index);
         m_bits[m_size * 2 + square].reset(index);
     }
-    inline bool Test(std::size_t row, std::size_t col, std::size_t square, char value) const
+    inline bool Test(std::size_t row, std::size_t col, std::size_t square, DataType value) const
     {
         assert(value >= 1 && value <= m_size);
         std::size_t index = static_cast<std::size_t>(value - 1);

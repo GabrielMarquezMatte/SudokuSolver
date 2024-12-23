@@ -5,8 +5,11 @@
 template <std::size_t N>
 class SudokuMatrix
 {
+public:
+    using DataType = typename BitSetIterator<N>::DataType;
+
 private:
-    std::array<char, N * N * N * N> m_data;
+    std::array<DataType, N * N * N * N> m_data;
     SudokuBits<N> m_dataBits;
 
 public:
@@ -28,7 +31,7 @@ public:
         m_data.fill(0);
     }
 
-    constexpr SudokuMatrix(const std::array<char, N * N * N * N> &data) : m_data(data), m_dataBits({})
+    constexpr SudokuMatrix(const std::array<DataType, N * N * N * N> &data) : m_data(data), m_dataBits({})
     {
         constexpr std::size_t size = N * N;
         // Inicializa os bitsets para marcar os valores presentes na matriz inicial
@@ -36,7 +39,7 @@ public:
         {
             for (std::size_t col = 0; col < size; ++col)
             {
-                char value = data[MatrixIndex(row, col)];
+                DataType value = data[MatrixIndex(row, col)];
                 if (value == 0)
                 {
                     continue;
@@ -48,7 +51,7 @@ public:
         }
     }
 
-    constexpr SudokuMatrix(std::array<char, N * N * N * N> &&data) : m_data(std::move(data)), m_dataBits({})
+    constexpr SudokuMatrix(std::array<DataType, N * N * N * N> &&data) : m_data(std::move(data)), m_dataBits({})
     {
         constexpr std::size_t size = N * N;
         // Inicializa os bitsets para marcar os valores presentes na matriz inicial
@@ -56,7 +59,7 @@ public:
         {
             for (std::size_t col = 0; col < size; ++col)
             {
-                char value = m_data[MatrixIndex(row, col)];
+                DataType value = m_data[MatrixIndex(row, col)];
                 if (value == 0)
                 {
                     continue;
@@ -101,25 +104,25 @@ public:
         return *this;
     }
 
-    inline constexpr bool operator==(const SudokuMatrix<N> &other) const
+    inline constexpr bool operator==(const SudokuMatrix<N> &other) const noexcept
     {
         return m_data == other.m_data;
     }
 
-    inline constexpr char GetValue(std::size_t row, std::size_t col) const
+    inline constexpr DataType GetValue(std::size_t row, std::size_t col) const
     {
         return m_data[MatrixIndex(row, col)];
     }
 
-    inline constexpr char GetValue(std::size_t index) const
+    inline constexpr DataType GetValue(std::size_t index) const
     {
         return m_data[index];
     }
 
-    inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex, char value)
+    inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex, DataType value)
     {
         // Remove o valor anterior, se houver
-        char &oldValue = m_data[index];
+        DataType &oldValue = m_data[index];
         if (oldValue != 0)
         {
             m_dataBits.ResetValue(row, col, squareIndex, oldValue);
@@ -135,19 +138,19 @@ public:
         }
     }
 
-    inline constexpr void SetValue(std::size_t row, std::size_t col, char value)
+    inline constexpr void SetValue(std::size_t row, std::size_t col, DataType value)
     {
         std::size_t index = MatrixIndex(row, col);
         std::size_t squareIndex = SquareIndex(row, col);
         return SetValue(row, col, index, squareIndex, value);
     }
 
-    inline constexpr bool IsValidPlay(char value, std::size_t row, std::size_t col, std::size_t squareIndex) const
+    inline constexpr bool IsValidPlay(DataType value, std::size_t row, std::size_t col, std::size_t squareIndex) const
     {
         return !m_dataBits.Test(row, col, squareIndex, value);
     }
 
-    inline constexpr bool IsValidPlay(char value, std::size_t row, std::size_t col) const
+    inline constexpr bool IsValidPlay(DataType value, std::size_t row, std::size_t col) const
     {
         return IsValidPlay(value, row, col, SquareIndex(row, col));
     }
@@ -178,7 +181,7 @@ public:
         SetValue(row, col, 0); // Define o valor como zero, removendo-o
     }
 
-    inline constexpr const auto& GetBits() const
+    inline constexpr const std::array<typename SudokuBits<N>::FlagType, N * N * 3> &GetBits() const noexcept
     {
         return m_dataBits.GetBits();
     }
@@ -187,33 +190,36 @@ public:
 class DynamicSudokuMatrix
 {
 public:
-    inline constexpr std::size_t MatrixIndex(const std::size_t row, const std::size_t col) const
+    using DataType = DynamicBitSetIterator::DataType;
+    inline constexpr std::size_t MatrixIndex(const std::size_t row, const std::size_t col) const noexcept
     {
         return row * m_rowSize + col;
     }
-    inline constexpr std::size_t SquareIndex(const std::size_t row, const std::size_t col) const
+    inline constexpr std::size_t SquareIndex(const std::size_t row, const std::size_t col) const noexcept
     {
         std::size_t squareRow = row / m_size;
         std::size_t squareCol = col / m_size;
         return squareRow * m_size + squareCol;
     }
+
 private:
     std::size_t m_rowSize;
     std::size_t m_size;
-    std::vector<char> m_data;
+    std::vector<DataType> m_data;
     SudokuDynamicBits m_dataBits;
-public: 
-    DynamicSudokuMatrix(std::size_t size) : m_rowSize(size * size), m_size(size), m_data(size * size * size * size, static_cast<char>(0)), m_dataBits(size)
+
+public:
+    DynamicSudokuMatrix(std::size_t size) : m_rowSize(size * size), m_size(size), m_data(size * size * size * size, static_cast<DataType>(0)), m_dataBits(size)
     {
     }
 
-    DynamicSudokuMatrix(const std::vector<char> &data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(data), m_dataBits(size)
+    DynamicSudokuMatrix(std::initializer_list<DataType> data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(data), m_dataBits(size)
     {
         for (std::size_t row = 0; row < m_rowSize; ++row)
         {
             for (std::size_t col = 0; col < m_rowSize; ++col)
             {
-                char value = data[MatrixIndex(row, col)];
+                DataType value = m_data[MatrixIndex(row, col)];
                 if (value == 0)
                 {
                     continue;
@@ -224,13 +230,30 @@ public:
         }
     }
 
-    DynamicSudokuMatrix(std::vector<char> &&data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(std::move(data)), m_dataBits(size)
+    DynamicSudokuMatrix(const std::vector<DataType> &data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(data), m_dataBits(size)
     {
         for (std::size_t row = 0; row < m_rowSize; ++row)
         {
             for (std::size_t col = 0; col < m_rowSize; ++col)
             {
-                char value = m_data[MatrixIndex(row, col)];
+                DataType value = data[MatrixIndex(row, col)];
+                if (value == 0)
+                {
+                    continue;
+                }
+                std::size_t squareIndex = SquareIndex(row, col);
+                m_dataBits.SetValue(row, col, squareIndex, value);
+            }
+        }
+    }
+
+    DynamicSudokuMatrix(std::vector<DataType> &&data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(std::move(data)), m_dataBits(size)
+    {
+        for (std::size_t row = 0; row < m_rowSize; ++row)
+        {
+            for (std::size_t col = 0; col < m_rowSize; ++col)
+            {
+                DataType value = m_data[MatrixIndex(row, col)];
                 if (value == 0)
                 {
                     continue;
@@ -282,24 +305,24 @@ public:
         return *this;
     }
 
-    inline bool operator==(const DynamicSudokuMatrix &other) const
+    inline bool operator==(const DynamicSudokuMatrix &other) const noexcept
     {
         return m_data == other.m_data;
     }
 
-    inline char GetValue(std::size_t row, std::size_t col) const
+    inline DataType GetValue(std::size_t row, std::size_t col) const
     {
         return m_data[MatrixIndex(row, col)];
     }
 
-    inline char GetValue(std::size_t index)
+    inline DataType GetValue(std::size_t index)
     {
         return m_data[index];
     }
 
-    inline void SetValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex, char value)
+    inline void SetValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex, DataType value)
     {
-        char &oldValue = m_data[index];
+        DataType &oldValue = m_data[index];
         if (oldValue != 0)
         {
             m_dataBits.ResetValue(row, col, squareIndex, oldValue);
@@ -311,19 +334,19 @@ public:
         }
     }
 
-    inline void SetValue(std::size_t row, std::size_t col, char value)
+    inline void SetValue(std::size_t row, std::size_t col, DataType value)
     {
         std::size_t index = MatrixIndex(row, col);
         std::size_t squareIndex = SquareIndex(row, col);
         return SetValue(row, col, index, squareIndex, value);
     }
 
-    inline bool IsValidPlay(char value, std::size_t row, std::size_t col, std::size_t squareIndex) const
+    inline bool IsValidPlay(DataType value, std::size_t row, std::size_t col, std::size_t squareIndex) const
     {
         return !m_dataBits.Test(row, col, squareIndex, value);
     }
 
-    inline bool IsValidPlay(char value, std::size_t row, std::size_t col) const
+    inline bool IsValidPlay(DataType value, std::size_t row, std::size_t col) const
     {
         return IsValidPlay(value, row, col, SquareIndex(row, col));
     }
@@ -354,12 +377,12 @@ public:
         SetValue(row, col, 0);
     }
 
-    inline std::size_t GetSize() const
+    inline std::size_t GetSize() const noexcept
     {
         return m_size;
     }
 
-    inline const auto& GetBits() const
+    inline const std::vector<boost::dynamic_bitset<>> &GetBits() const noexcept
     {
         return m_dataBits.GetBits();
     }

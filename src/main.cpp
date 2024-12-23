@@ -41,7 +41,7 @@ static void DrawNumbers(const SudokuMatrix<N> &board, sf::RenderWindow &window, 
     {
         for (std::size_t j = 0; j < Size; ++j) // Corrigido para < em vez de <=
         {
-            char value = board.GetValue(i, j);
+            typename SudokuMatrix<N>::DataType value = board.GetValue(i, j);
             if (value == 0)
             {
                 continue;
@@ -162,20 +162,21 @@ SudokuMatrix<N> GetPossibleMatrix(float probability, pcg64 &rng)
 }
 
 template <std::size_t N>
-void Run(const float probability, pcg64 &rng, sf::Font &font)
-{
-    SudokuMatrix<N> data = GetPossibleMatrix<N>(probability, rng);
-    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Sudoku Solver Visualizer");
-    RunClass<N, Solver>(data, window, font);
-}
-
-int main(int argc, char **argv)
+int Run(const float probability, pcg64 &rng)
 {
     sf::Font font;
     if (!font.loadFromFile("arial.ttf"))
     {
         return -1; // Erro ao carregar fonte
     }
+    SudokuMatrix<N> data = GetPossibleMatrix<N>(probability, rng);
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Sudoku Solver Visualizer");
+    RunClass<N, Solver>(data, window, font);
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
     // static constexpr std::array<char, 81> sudokuGame = {
     //     5, 3, 0, 0, 7, 0, 0, 0, 0,
     //     6, 0, 0, 1, 9, 5, 0, 0, 0,
@@ -201,27 +202,22 @@ int main(int argc, char **argv)
     {
     case 2:
     {
-        Run<2>(probability, rng, font);
-        break;
+        return Run<2>(probability, rng);
     }
     case 3:
     {
-        Run<3>(probability, rng, font);
-        break;
+        return Run<3>(probability, rng);
     }
     case 4:
     {
-        Run<4>(probability, rng, font);
-        break;
+        return Run<4>(probability, rng);
     }
     case 5:
     {
-        Run<5>(probability, rng, font);
-        break;
+        return Run<5>(probability, rng);
     }
     default:
         std::cerr << "Invalid size\n";
         return 1;
     }
-    return 0;
 }

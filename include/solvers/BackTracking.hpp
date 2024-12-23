@@ -6,6 +6,8 @@
 template <std::size_t N>
 class BackTrackingSolver : public ISolver<N>
 {
+public:
+    using DataType = typename SudokuMatrix<N>::DataType;
 private:
     SudokuMatrix<N> m_data;
     std::size_t m_currentRow = 0;
@@ -83,7 +85,7 @@ public:
         std::size_t index = SudokuMatrix<N>::MatrixIndex(m_currentRow, m_currentCol);
         if (m_currentState == AdvanceResult::BackTracking)
         {
-            char value = m_data.GetValue(index) + 1;
+            DataType value = m_data.GetValue(index) + 1;
             std::size_t squareIndex = SudokuMatrix<N>::SquareIndex(m_currentRow, m_currentCol);
             m_data.RemoveValue(m_currentRow, m_currentCol, index, squareIndex);
             auto possibleValues = m_data.GetPossibleValues(m_currentRow, m_currentCol, squareIndex);
@@ -97,7 +99,7 @@ public:
             }
             return BackTrack();
         }
-        char inSpot = m_data.GetValue(index);
+        DataType inSpot = m_data.GetValue(index);
         if (inSpot != 0)
         {
             return Continue();
@@ -111,15 +113,15 @@ public:
         m_data.SetValue(m_currentRow, m_currentCol, index, squareIndex, *possibleValues);
         return Continue();
     }
-    inline constexpr AdvanceResult GetStatus() const override
+    inline constexpr AdvanceResult GetStatus() const noexcept override
     {
         return m_currentState;
     }
-    inline constexpr const SudokuMatrix<N> &GetBoard() const override
+    inline constexpr const SudokuMatrix<N> &GetBoard() const noexcept override
     {
         return m_data;
     }
-    inline constexpr bool IsSolved() const override
+    inline constexpr bool IsSolved() const noexcept override
     {
         return m_solved;
     }
@@ -127,6 +129,8 @@ public:
 
 class DynamicBackTrackingSolver : public IDynamicSolver
 {
+public:
+    using DataType = typename DynamicSudokuMatrix::DataType;
 private:
     DynamicSudokuMatrix m_data;
     std::size_t m_currentRow = 0;
@@ -205,7 +209,7 @@ public:
         std::size_t index = m_data.MatrixIndex(m_currentRow, m_currentCol);
         if (m_currentState == AdvanceResult::BackTracking)
         {
-            char value = m_data.GetValue(index) + 1;
+            DataType value = m_data.GetValue(index) + 1;
             std::size_t squareIndex = m_data.SquareIndex(m_currentRow, m_currentCol);
             m_data.RemoveValue(m_currentRow, m_currentCol, index, squareIndex);
             auto possibleValues = m_data.GetPossibleValues(m_currentRow, m_currentCol, squareIndex);
@@ -219,7 +223,7 @@ public:
             }
             return BackTrack();
         }
-        char inSpot = m_data.GetValue(index);
+        DataType inSpot = m_data.GetValue(index);
         if (inSpot != 0)
         {
             return Continue();
@@ -233,15 +237,15 @@ public:
         m_data.SetValue(m_currentRow, m_currentCol, index, squareIndex, *possibleValues);
         return Continue();
     }
-    inline constexpr AdvanceResult GetStatus() const override
+    inline constexpr AdvanceResult GetStatus() const noexcept override
     {
         return m_currentState;
     }
-    inline constexpr const DynamicSudokuMatrix &GetBoard() const override
+    inline constexpr const DynamicSudokuMatrix &GetBoard() const noexcept override
     {
         return m_data;
     }
-    inline constexpr bool IsSolved() const override
+    inline constexpr bool IsSolved() const noexcept override
     {
         return m_solved;
     }

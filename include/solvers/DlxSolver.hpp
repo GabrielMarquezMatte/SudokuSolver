@@ -20,16 +20,19 @@ struct DLXColumn : public DLXNode
     std::size_t index;
     // Additional metadata can go here
 };
+template<typename T>
 struct Placement
 {
     std::size_t row;
     std::size_t col;
-    char digit;
+    T digit;
 };
 
 template <std::size_t N>
 class DLXSolver : public ISolver<N>
 {
+public:
+    using DataType = typename SudokuMatrix<N>::DataType;
 private:
     SudokuMatrix<N> m_data;
     DLXColumn *m_header = nullptr;
@@ -111,7 +114,7 @@ private:
         return {cellColIndex, rowColIndex};
     }
 
-    constexpr Placement DecodePlacement(DLXNode *rowNode)
+    constexpr Placement<DataType> DecodePlacement(DLXNode *rowNode)
     {
         static constexpr std::size_t size = N * N;
         static constexpr std::size_t sizeSquared = size * size;
@@ -129,7 +132,7 @@ private:
         auto [cellColIndex, rowColIndex] = GetRowColIndices(colIndices);
         std::size_t r = cellColIndex / size;
         std::size_t c = cellColIndex % size;
-        char d = static_cast<char>((rowColIndex - sizeSquared) % size + 1);
+        DataType d = static_cast<DataType>((rowColIndex - sizeSquared) % size + 1);
         return {r, c, d};
     }
 
@@ -144,7 +147,7 @@ private:
 
     inline constexpr BitSetIterator<N> GetCandidates(std::size_t row, std::size_t column)
     {
-        char val = m_data.GetValue(row, column);
+        DataType val = m_data.GetValue(row, column);
         if (val != 0)
         {
             typename BitSetIterator<N>::FlagType value = val - 1;
@@ -183,6 +186,7 @@ public:
         constexpr std::size_t size = N * N;
         constexpr std::size_t squaredSize = size * size;
         constexpr std::size_t totalCols = 4 * size * size;
+        m_solutionStack.reserve(squaredSize);
 
         // Create column headers + header node
         m_header = new DLXColumn;
@@ -211,7 +215,7 @@ public:
         {
             for (std::size_t column = 0; column < size; column++)
             {
-                for (char d : GetCandidates(row, column))
+                for (DataType d : GetCandidates(row, column))
                 {
                     // Compute column indices for this candidate (r,c,d)
                     std::size_t cellCol = row * size + column;
@@ -276,9 +280,9 @@ public:
         delete m_header;
     }
 
-    inline constexpr bool IsSolved() const override { return m_solved; }
-    inline constexpr AdvanceResult GetStatus() const override { return m_currentState; }
-    inline constexpr const SudokuMatrix<N> &GetBoard() const override { return m_data; }
+    inline constexpr bool IsSolved() const noexcept override { return m_solved; }
+    inline constexpr AdvanceResult GetStatus() const noexcept override { return m_currentState; }
+    inline constexpr const SudokuMatrix<N> &GetBoard() const noexcept override { return m_data; }
 
     bool Advance() override
     {
@@ -386,6 +390,6 @@ private:
             CoverColumn(static_cast<DLXColumn *>(j->column));
         }
         auto [r, c, d] = DecodePlacement(rowNode);
-        m_data.SetValue(r, c, (char)d);
+        m_data.SetValue(r, c, d);
     }
 };
