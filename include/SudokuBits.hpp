@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <bit>
+#include <boost/dynamic_bitset.hpp>
 
 template <std::size_t N>
 struct BitSetIterator
@@ -9,6 +10,7 @@ public:
     using FlagType = std::conditional_t<(N * N <= 8), std::uint8_t,
                                         std::conditional_t<(N * N <= 16), std::uint16_t,
                                                            std::conditional_t<(N * N <= 32), std::uint32_t, std::uint64_t>>>;
+
 private:
     FlagType m_flag;
 
@@ -50,14 +52,57 @@ public:
     }
 };
 
-template<std::size_t N>
-struct SudokuBits
+struct DynamicBitSetIterator
 {
 private:
+    using size_type = boost::dynamic_bitset<>::size_type;
+    size_type m_index;
+    size_type m_count;
+    boost::dynamic_bitset<> m_bitset;
+
+public:
+    DynamicBitSetIterator(const boost::dynamic_bitset<> &bitset) : m_index(0), m_bitset(bitset), m_count(bitset.count())
+    {
+        m_index = m_bitset.find_first();
+    }
+    inline DynamicBitSetIterator &operator++()
+    {
+        m_index = m_bitset.find_next(m_index);
+        m_count--;
+        return *this;
+    }
+    inline char operator*() const
+    {
+        return static_cast<char>(m_index + 1);
+    }
+    inline bool operator!=(const DynamicBitSetIterator &other) const
+    {
+        return m_index != other.m_index;
+    }
+    inline DynamicBitSetIterator begin()
+    {
+        return {m_bitset};
+    }
+    static inline DynamicBitSetIterator end()
+    {
+        return {boost::dynamic_bitset<>()};
+    }
+    inline std::size_t Count() const
+    {
+        return m_count;
+    }
+};
+
+template <std::size_t N>
+struct SudokuBits
+{
+public:
     using FlagType = BitSetIterator<N>::FlagType;
+private:
     std::array<FlagType, N * N * 3> m_bits;
     static constexpr std::size_t size = N * N;
     static constexpr FlagType AllBitsSet = (1ULL << size) - 1;
+
 public:
     inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t square, char value)
     {
@@ -85,5 +130,55 @@ public:
     {
         FlagType usedBits = m_bits[row] | m_bits[size + col] | m_bits[size * 2 + square];
         return static_cast<FlagType>(~usedBits & AllBitsSet);
+    }
+
+    inline constexpr const std::array<FlagType, N * N * 3> &GetBits() const
+    {
+        return m_bits;
+    }
+};
+
+struct SudokuDynamicBits
+{
+private:
+    std::size_t m_size;
+    std::vector<boost::dynamic_bitset<>> m_bits;
+    boost::dynamic_bitset<> m_allBitsSet;
+
+public:
+    SudokuDynamicBits(std::size_t size) : m_bits(size * size * 3, boost::dynamic_bitset<>(size * size)), m_size(size * size), m_allBitsSet(size * size)
+    {
+        m_allBitsSet.set();
+    }
+    inline void SetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    {
+        assert(value >= 1 && value <= m_size);
+        std::size_t index = static_cast<std::size_t>(value - 1);
+        m_bits[row].set(index);
+        m_bits[m_size + col].set(index);
+        m_bits[m_size * 2 + square].set(index);
+    }
+    inline void ResetValue(std::size_t row, std::size_t col, std::size_t square, char value)
+    {
+        assert(value >= 1 && value <= m_size);
+        std::size_t index = static_cast<std::size_t>(value - 1);
+        m_bits[row].reset(index);
+        m_bits[m_size + col].reset(index);
+        m_bits[m_size * 2 + square].reset(index);
+    }
+    inline bool Test(std::size_t row, std::size_t col, std::size_t square, char value) const
+    {
+        assert(value >= 1 && value <= m_size);
+        std::size_t index = static_cast<std::size_t>(value - 1);
+        return m_bits[row].test(index) && m_bits[m_size + col].test(index) && m_bits[m_size * 2 + square].test(index);
+    }
+    inline boost::dynamic_bitset<> GetAvailableValues(std::size_t row, std::size_t col, std::size_t square) const
+    {
+        boost::dynamic_bitset<> usedBits = m_bits[row] | m_bits[m_size + col] | m_bits[m_size * 2 + square];
+        return ~usedBits & m_allBitsSet;
+    }
+    inline const std::vector<boost::dynamic_bitset<>> &GetBits() const
+    {
+        return m_bits;
     }
 };

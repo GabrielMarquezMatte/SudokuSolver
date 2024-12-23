@@ -9,6 +9,7 @@
         },
         "benchmark",
         "pcg",
-        "gtest"
+        "gtest",
+        "boost-dynamic-bitset"
     ]
 }

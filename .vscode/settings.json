@@ -82,6 +82,15 @@
         "variant": "cpp",
         "xhash": "cpp",
         "stack": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "complex": "cpp",
+        "cstdarg": "cpp",
+        "execution": "cpp",
+        "filesystem": "cpp",
+        "memory_resource": "cpp",
+        "shared_mutex": "cpp",
+        "source_location": "cpp",
+        "stdfloat": "cpp",
+        "typeindex": "cpp"
     }
 }

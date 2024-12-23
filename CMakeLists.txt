@@ -19,15 +19,16 @@ endif()
 
 include(${PROJECT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
-add_subdirectory(tests)
-
 find_package(SFML COMPONENTS system window graphics audio CONFIG REQUIRED)
 find_package(benchmark CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS dynamic_bitset)
 find_path(PCG_INCLUDE_DIRS "pcg_extras.hpp")
 
+add_subdirectory(tests)
+
 add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE sfml-system sfml-network sfml-graphics sfml-window sfml-audio)
+target_link_libraries(${PROJECT_NAME} PRIVATE sfml-system sfml-network sfml-graphics sfml-window sfml-audio Boost::dynamic_bitset)
 target_include_directories(${PROJECT_NAME} PRIVATE ${PCG_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME}_BENCHMARK src/benchmarks.cpp)
-target_link_libraries(${PROJECT_NAME}_BENCHMARK PRIVATE benchmark::benchmark benchmark::benchmark_main)
+target_link_libraries(${PROJECT_NAME}_BENCHMARK PRIVATE benchmark::benchmark benchmark::benchmark_main Boost::dynamic_bitset)
 target_include_directories(${PROJECT_NAME}_BENCHMARK PRIVATE ${PCG_INCLUDE_DIRS})

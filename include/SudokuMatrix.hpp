@@ -1,5 +1,6 @@
 #pragma once
 #include "./SudokuBits.hpp"
+#include <cmath>
 
 template <std::size_t N>
 class SudokuMatrix
@@ -47,6 +48,26 @@ public:
         }
     }
 
+    constexpr SudokuMatrix(std::array<char, N * N * N * N> &&data) : m_data(std::move(data)), m_dataBits({})
+    {
+        constexpr std::size_t size = N * N;
+        // Inicializa os bitsets para marcar os valores presentes na matriz inicial
+        for (std::size_t row = 0; row < size; ++row)
+        {
+            for (std::size_t col = 0; col < size; ++col)
+            {
+                char value = m_data[MatrixIndex(row, col)];
+                if (value == 0)
+                {
+                    continue;
+                }
+                std::size_t squareIndex = SquareIndex(row, col);
+                // Marca os valores nos bitsets correspondentes
+                m_dataBits.SetValue(row, col, squareIndex, value);
+            }
+        }
+    }
+
     constexpr SudokuMatrix(const SudokuMatrix<N> &other)
         : m_data(other.m_data),
           m_dataBits(other.m_dataBits)
@@ -78,6 +99,11 @@ public:
             m_dataBits = std::move(other.m_dataBits);
         }
         return *this;
+    }
+
+    inline constexpr bool operator==(const SudokuMatrix<N> &other) const
+    {
+        return m_data == other.m_data;
     }
 
     inline constexpr char GetValue(std::size_t row, std::size_t col) const
@@ -150,5 +176,191 @@ public:
     inline constexpr void RemoveValue(std::size_t row, std::size_t col)
     {
         SetValue(row, col, 0); // Define o valor como zero, removendo-o
+    }
+
+    inline constexpr const auto& GetBits() const
+    {
+        return m_dataBits.GetBits();
+    }
+};
+
+class DynamicSudokuMatrix
+{
+public:
+    inline constexpr std::size_t MatrixIndex(const std::size_t row, const std::size_t col) const
+    {
+        return row * m_rowSize + col;
+    }
+    inline constexpr std::size_t SquareIndex(const std::size_t row, const std::size_t col) const
+    {
+        std::size_t squareRow = row / m_size;
+        std::size_t squareCol = col / m_size;
+        return squareRow * m_size + squareCol;
+    }
+private:
+    std::size_t m_rowSize;
+    std::size_t m_size;
+    std::vector<char> m_data;
+    SudokuDynamicBits m_dataBits;
+public: 
+    DynamicSudokuMatrix(std::size_t size) : m_rowSize(size * size), m_size(size), m_data(size * size * size * size, static_cast<char>(0)), m_dataBits(size)
+    {
+    }
+
+    DynamicSudokuMatrix(const std::vector<char> &data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(data), m_dataBits(size)
+    {
+        for (std::size_t row = 0; row < m_rowSize; ++row)
+        {
+            for (std::size_t col = 0; col < m_rowSize; ++col)
+            {
+                char value = data[MatrixIndex(row, col)];
+                if (value == 0)
+                {
+                    continue;
+                }
+                std::size_t squareIndex = SquareIndex(row, col);
+                m_dataBits.SetValue(row, col, squareIndex, value);
+            }
+        }
+    }
+
+    DynamicSudokuMatrix(std::vector<char> &&data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(std::move(data)), m_dataBits(size)
+    {
+        for (std::size_t row = 0; row < m_rowSize; ++row)
+        {
+            for (std::size_t col = 0; col < m_rowSize; ++col)
+            {
+                char value = m_data[MatrixIndex(row, col)];
+                if (value == 0)
+                {
+                    continue;
+                }
+                std::size_t squareIndex = SquareIndex(row, col);
+                m_dataBits.SetValue(row, col, squareIndex, value);
+            }
+        }
+    }
+
+    DynamicSudokuMatrix(const DynamicSudokuMatrix &other)
+        : m_rowSize(other.m_rowSize),
+          m_size(other.m_size),
+          m_data(other.m_data),
+          m_dataBits(other.m_dataBits)
+    {
+    }
+
+    DynamicSudokuMatrix(DynamicSudokuMatrix &&other) noexcept
+        : m_rowSize(other.m_rowSize),
+          m_size(other.m_size),
+          m_data(std::move(other.m_data)),
+          m_dataBits(std::move(other.m_dataBits))
+    {
+    }
+
+    DynamicSudokuMatrix &operator=(const DynamicSudokuMatrix &other)
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+        m_rowSize = other.m_rowSize;
+        m_size = other.m_size;
+        m_data = other.m_data;
+        m_dataBits = other.m_dataBits;
+        return *this;
+    }
+
+    DynamicSudokuMatrix &operator=(DynamicSudokuMatrix &&other) noexcept
+    {
+        if (this != &other) // Evita a auto-atribuição
+        {
+            m_rowSize = other.m_rowSize;
+            m_size = other.m_size;
+            m_data = std::move(other.m_data);
+            m_dataBits = std::move(other.m_dataBits);
+        }
+        return *this;
+    }
+
+    inline bool operator==(const DynamicSudokuMatrix &other) const
+    {
+        return m_data == other.m_data;
+    }
+
+    inline char GetValue(std::size_t row, std::size_t col) const
+    {
+        return m_data[MatrixIndex(row, col)];
+    }
+
+    inline char GetValue(std::size_t index)
+    {
+        return m_data[index];
+    }
+
+    inline void SetValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex, char value)
+    {
+        char &oldValue = m_data[index];
+        if (oldValue != 0)
+        {
+            m_dataBits.ResetValue(row, col, squareIndex, oldValue);
+        }
+        oldValue = value;
+        if (value != 0)
+        {
+            m_dataBits.SetValue(row, col, squareIndex, value);
+        }
+    }
+
+    inline void SetValue(std::size_t row, std::size_t col, char value)
+    {
+        std::size_t index = MatrixIndex(row, col);
+        std::size_t squareIndex = SquareIndex(row, col);
+        return SetValue(row, col, index, squareIndex, value);
+    }
+
+    inline bool IsValidPlay(char value, std::size_t row, std::size_t col, std::size_t squareIndex) const
+    {
+        return !m_dataBits.Test(row, col, squareIndex, value);
+    }
+
+    inline bool IsValidPlay(char value, std::size_t row, std::size_t col) const
+    {
+        return IsValidPlay(value, row, col, SquareIndex(row, col));
+    }
+
+    inline DynamicBitSetIterator GetPossibleValues(std::size_t row, std::size_t col, std::size_t squareIndex) const
+    {
+        return {m_dataBits.GetAvailableValues(row, col, squareIndex)};
+    }
+
+    inline DynamicBitSetIterator GetPossibleValues(std::size_t row, std::size_t col) const
+    {
+        return GetPossibleValues(row, col, SquareIndex(row, col));
+    }
+
+    inline void RemoveValue(std::size_t row, std::size_t col, std::size_t index, std::size_t squareIndex)
+    {
+        SetValue(row, col, index, squareIndex, 0);
+    }
+
+    inline void RemoveValue(std::size_t row, std::size_t col, std::size_t index)
+    {
+        std::size_t squareIndex = SquareIndex(row, col);
+        SetValue(row, col, index, squareIndex, 0);
+    }
+
+    inline void RemoveValue(std::size_t row, std::size_t col)
+    {
+        SetValue(row, col, 0);
+    }
+
+    inline std::size_t GetSize() const
+    {
+        return m_size;
+    }
+
+    inline const auto& GetBits() const
+    {
+        return m_dataBits.GetBits();
     }
 };

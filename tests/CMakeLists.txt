@@ -4,4 +4,4 @@ set(TEST_SOURCES
 )
 # Create the test executable
 add_executable(${PROJECT_NAME}_TEST ${TEST_SOURCES})
-target_link_libraries(${PROJECT_NAME}_TEST GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+target_link_libraries(${PROJECT_NAME}_TEST GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main Boost::dynamic_bitset)
