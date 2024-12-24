@@ -59,9 +59,19 @@ static void BM_SolverStatic(benchmark::State &state)
     for (auto _ : state)
     {
         Solver<N> solver{sudokuGame};
-        while (solver.Advance())
+        if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
         {
-            index++;
+            while (solver.Advance(false))
+            {
+                index++;
+            }
+        }
+        else
+        {
+            while (solver.Advance())
+            {
+                index++;
+            }
         }
     }
     state.SetItemsProcessed(index);
@@ -111,14 +121,30 @@ static void BM_SolverRandom(benchmark::State &state)
     {
         Solver<N> solver{sudokuGame};
         std::size_t innerIndex = 0;
-        while (solver.Advance())
+        if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
         {
-            innerIndex++;
-            if (innerIndex == 10'000'000)
+            while (solver.Advance(false))
             {
-                index += innerIndex;
-                state.SetItemsProcessed(index);
-                return;
+                innerIndex++;
+                if (innerIndex == 10'000'000)
+                {
+                    index += innerIndex;
+                    state.SetItemsProcessed(index);
+                    return;
+                }
+            }
+        }
+        else
+        {
+            while (solver.Advance())
+            {
+                innerIndex++;
+                if (innerIndex == 10'000'000)
+                {
+                    index += innerIndex;
+                    state.SetItemsProcessed(index);
+                    return;
+                }
             }
         }
         index += innerIndex;

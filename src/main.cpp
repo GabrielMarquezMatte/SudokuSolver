@@ -167,12 +167,26 @@ SudokuMatrix<N> GetPossibleMatrix(float probability, pcg64 &rng)
         SudokuMatrix<N> data = CreateBoard<N>(probability, rng);
         Solver<N> solver{data};
         std::size_t index = 0;
-        while (solver.Advance())
+        if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
         {
-            index++;
-            if (index % 20'000'000 == 0)
+            while (solver.Advance(false))
             {
-                break;
+                index++;
+                if (index % 20'000 == 0)
+                {
+                    break;
+                }
+            }
+        }
+        else
+        {
+            while (solver.Advance())
+            {
+                index++;
+                if (index % 20'000'000 == 0)
+                {
+                    break;
+                }
             }
         }
         if (!solver.IsSolved() || !IsValidSudoku(solver.GetBoard()))
@@ -194,7 +208,8 @@ int Run(const float probability, pcg64 &rng)
     SudokuMatrix<N> data = GetPossibleMatrix<N, Solver>(probability, rng);
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Sudoku Solver Visualizer");
     constexpr std::size_t cellSize = 150 / N;
-    while(RunClass<N, Solver>(data, window, font, cellSize)) ;
+    while (RunClass<N, Solver>(data, window, font, cellSize))
+        ;
     return 0;
 }
 

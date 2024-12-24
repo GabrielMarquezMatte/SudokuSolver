@@ -192,10 +192,13 @@ inline constexpr bool CanBeSolved()
         0, 0, 0, 4, 1, 9, 0, 0, 5,
         0, 0, 0, 0, 8, 0, 0, 7, 9};
     Solver<N> solver{std::move(sudokuGame)};
-    std::size_t index = 0;
-    while (solver.Advance())
+    if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
     {
-        index++;
+        while (solver.Advance(false));
+    }
+    else
+    {
+        while (solver.Advance());
     }
     return solver.IsSolved() && IsValidSudoku(solver.GetBoard());
 }
@@ -216,11 +219,7 @@ inline bool CanBeSolved()
                                           0, 0, 0, 0, 8, 0, 0, 7, 9},
                                          3};
     Solver solver{std::move(sudokuGameMatrix)};
-    std::size_t index = 0;
-    while (solver.Advance())
-    {
-        index++;
-    }
+    while (solver.Advance());
     return solver.IsSolved() && IsValidSudoku(solver.GetBoard());
 }
 

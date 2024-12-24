@@ -346,7 +346,7 @@ public:
     inline constexpr AdvanceResult GetStatus() const noexcept override { return m_currentState; }
     inline constexpr const SudokuMatrix<N> &GetBoard() const noexcept override { return m_data; }
 
-    bool Advance() override
+    bool Advance(bool insertEveryStep)
     {
         if (m_solved || m_currentState == AdvanceResult::Finished)
         {
@@ -385,7 +385,7 @@ public:
             }
 
             // Try this row
-            ChooseRow(choice);
+            ChooseRow(choice, insertEveryStep);
             return Continue();
         }
         if (m_solutionStack.empty())
@@ -401,26 +401,23 @@ public:
         // We covered lastChoice->column first, then the others.
         // So we uncover in reverse:
         UncoverRow(lastChoice);
-        auto [rowIndex, colIndex, digit] = DecodePlacement(lastChoice);
-        m_data.SetValue(rowIndex, colIndex, 0);
 
         // Now, try the next choice in the same column if any.
         // If there are no more rows in that column, we must backtrack further.
         DLXColumn *c = static_cast<DLXColumn *>(lastChoice->column);
         DLXNode *nextChoice = lastChoice->down;
-        while (nextChoice != c && nextChoice != lastChoice->column)
-        {
-            nextChoice = nextChoice->down;
-        }
-
         if (nextChoice == c)
         {
             // No more rows to try, backtrack more
             return BackTrack();
         }
         // Try nextChoice
-        ChooseRow(nextChoice);
+        ChooseRow(nextChoice, insertEveryStep);
         return Continue();
+    }
+    inline bool Advance() override
+    {
+        return Advance(true);
     }
 
 private:
@@ -436,11 +433,14 @@ private:
         return true;
     }
 
-    void ChooseRow(DLXNode *rowNode)
+    inline void ChooseRow(DLXNode *rowNode, bool insertValue)
     {
         m_solutionStack.push_back(rowNode);
         CoverRow(rowNode);
-        auto [r, c, d] = DecodePlacement(rowNode);
-        m_data.SetValue(r, c, d);
+        if (insertValue)
+        {
+            auto [r, c, d] = DecodePlacement(rowNode);
+            m_data.SetValue(r, c, d);
+        }
     }
 };
