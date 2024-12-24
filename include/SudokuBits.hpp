@@ -59,12 +59,12 @@ public:
     using DataType = std::uint8_t;
 private:
     using size_type = boost::dynamic_bitset<>::size_type;
+    boost::dynamic_bitset<> m_bitset;
     size_type m_index;
     size_type m_count;
-    boost::dynamic_bitset<> m_bitset;
 
 public:
-    DynamicBitSetIterator(const boost::dynamic_bitset<> &bitset) : m_index(0), m_bitset(bitset), m_count(bitset.count())
+    DynamicBitSetIterator(const boost::dynamic_bitset<> &bitset) : m_bitset(bitset), m_index(0), m_count(bitset.count())
     {
         m_index = m_bitset.find_first();
     }
@@ -147,12 +147,12 @@ struct SudokuDynamicBits
 public:
     using DataType = typename DynamicBitSetIterator::DataType;
 private:
-    std::size_t m_size;
-    std::vector<boost::dynamic_bitset<>> m_bits;
     boost::dynamic_bitset<> m_allBitsSet;
+    std::vector<boost::dynamic_bitset<>> m_bits;
+    std::size_t m_size;
 
 public:
-    SudokuDynamicBits(std::size_t size) : m_bits(size * size * 3, boost::dynamic_bitset<>(size * size)), m_size(size * size), m_allBitsSet(size * size)
+    SudokuDynamicBits(std::size_t size) : m_allBitsSet(size * size), m_bits(size * size * 3, boost::dynamic_bitset<>(size * size)), m_size(size * size)
     {
         m_allBitsSet.set();
     }

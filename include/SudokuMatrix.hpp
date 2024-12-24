@@ -26,7 +26,7 @@ public:
         return row * rowSize + col;
     }
 
-    constexpr SudokuMatrix() : m_dataBits({}), m_data({})
+    constexpr SudokuMatrix() : m_data({}), m_dataBits({})
     {
         m_data.fill(0);
     }
@@ -208,6 +208,23 @@ private:
     std::vector<DataType> m_data;
     SudokuDynamicBits m_dataBits;
 
+    void InitializeData()
+    {
+        for (std::size_t row = 0; row < m_rowSize; ++row)
+        {
+            for (std::size_t col = 0; col < m_rowSize; ++col)
+            {
+                DataType value = m_data[MatrixIndex(row, col)];
+                if (value == 0)
+                {
+                    continue;
+                }
+                std::size_t squareIndex = SquareIndex(row, col);
+                m_dataBits.SetValue(row, col, squareIndex, value);
+            }
+        }
+    }
+
 public:
     DynamicSudokuMatrix(std::size_t size) : m_rowSize(size * size), m_size(size), m_data(size * size * size * size, static_cast<DataType>(0)), m_dataBits(size)
     {
@@ -215,53 +232,17 @@ public:
 
     DynamicSudokuMatrix(std::initializer_list<DataType> data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(data), m_dataBits(size)
     {
-        for (std::size_t row = 0; row < m_rowSize; ++row)
-        {
-            for (std::size_t col = 0; col < m_rowSize; ++col)
-            {
-                DataType value = m_data[MatrixIndex(row, col)];
-                if (value == 0)
-                {
-                    continue;
-                }
-                std::size_t squareIndex = SquareIndex(row, col);
-                m_dataBits.SetValue(row, col, squareIndex, value);
-            }
-        }
+        InitializeData();
     }
 
     DynamicSudokuMatrix(const std::vector<DataType> &data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(data), m_dataBits(size)
     {
-        for (std::size_t row = 0; row < m_rowSize; ++row)
-        {
-            for (std::size_t col = 0; col < m_rowSize; ++col)
-            {
-                DataType value = data[MatrixIndex(row, col)];
-                if (value == 0)
-                {
-                    continue;
-                }
-                std::size_t squareIndex = SquareIndex(row, col);
-                m_dataBits.SetValue(row, col, squareIndex, value);
-            }
-        }
+        InitializeData();
     }
 
     DynamicSudokuMatrix(std::vector<DataType> &&data, std::size_t size) : m_rowSize(size * size), m_size(size), m_data(std::move(data)), m_dataBits(size)
     {
-        for (std::size_t row = 0; row < m_rowSize; ++row)
-        {
-            for (std::size_t col = 0; col < m_rowSize; ++col)
-            {
-                DataType value = m_data[MatrixIndex(row, col)];
-                if (value == 0)
-                {
-                    continue;
-                }
-                std::size_t squareIndex = SquareIndex(row, col);
-                m_dataBits.SetValue(row, col, squareIndex, value);
-            }
-        }
+        InitializeData();
     }
 
     DynamicSudokuMatrix(const DynamicSudokuMatrix &other)

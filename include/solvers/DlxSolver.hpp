@@ -20,7 +20,7 @@ struct DLXColumn : public DLXNode
     std::size_t index;
     // Additional metadata can go here
 };
-template<typename T>
+template <typename T>
 struct Placement
 {
     std::size_t row;
@@ -33,6 +33,7 @@ class DLXSolver : public ISolver<N>
 {
 public:
     using DataType = typename SudokuMatrix<N>::DataType;
+
 private:
     SudokuMatrix<N> m_data;
     DLXColumn *m_header = nullptr;
@@ -77,6 +78,27 @@ private:
         c->left->right = c;
     }
 
+    inline constexpr void CoverRow(DLXNode *rowNode)
+    {
+        // Cobre a coluna principal
+        CoverColumn(static_cast<DLXColumn *>(rowNode->column));
+        // Cobre as demais colunas que este row cobre
+        for (DLXNode *j = rowNode->right; j != rowNode; j = j->right)
+        {
+            CoverColumn(static_cast<DLXColumn *>(j->column));
+        }
+    }
+
+    inline constexpr void UncoverRow(DLXNode *rowNode)
+    {
+        // Descobre as colunas na ordem inversa da cobertura
+        for (DLXNode *j = rowNode->left; j != rowNode; j = j->left)
+        {
+            UncoverColumn(static_cast<DLXColumn *>(j->column));
+        }
+        UncoverColumn(static_cast<DLXColumn *>(rowNode->column));
+    }
+
     // Choose the next column (e.g., the one with the smallest size)
     inline constexpr DLXColumn *ChooseColumn()
     {
@@ -91,6 +113,46 @@ private:
             }
         }
         return best;
+    }
+
+    constexpr DLXNode *ChooseBestRow(DLXColumn *column)
+    {
+        if (column->size == 0)
+        {
+            return column; // Retorna a própria coluna como "sinal" de que não há escolha
+        }
+
+        // Vamos iterar pelas linhas para achar a que minimize a soma dos sizes das colunas que ela cobre.
+        DLXNode *bestRow = nullptr;
+        std::size_t bestScore = std::numeric_limits<std::size_t>::max();
+
+        // Percorre todas as linhas abaixo de col até voltar ao topo (DLXNode* i = col->down; i != col; i = i->down).
+        for (DLXNode *row = column->down; row != column; row = row->down)
+        {
+            std::size_t rowScore = 0;
+
+            // Para cada coluna que este row cobre, soma o DLXColumn::size
+            // Lembre-se de que cada row cobre 4 colunas no Sudoku (cell, row-constraint, col-constraint, box-constraint).
+            DLXNode *aux = row->right;
+            while (true)
+            {
+                DLXColumn *cAux = static_cast<DLXColumn *>(aux->column);
+                rowScore += cAux->size;
+
+                if (aux == row)
+                    break;
+                aux = aux->right;
+            }
+
+            // Se essa soma for menor que a melhor até agora, atualizamos
+            if (rowScore < bestScore)
+            {
+                bestScore = rowScore;
+                bestRow = row;
+            }
+        }
+        // Retorna a melhor linha encontrada ou a coluna em si (caso não haja nenhuma)
+        return bestRow ? bestRow : column;
     }
 
     constexpr std::pair<std::size_t, std::size_t> GetRowColIndices(const std::span<const std::size_t> indices)
@@ -156,7 +218,7 @@ private:
         return m_data.GetPossibleValues(row, column);
     }
 
-    inline DLXColumn* InitializeColumn(DLXColumn* header, std::size_t index)
+    inline DLXColumn *InitializeColumn(DLXColumn *header, std::size_t index)
     {
         DLXColumn *col = new DLXColumn;
         col->column = col;
@@ -315,8 +377,7 @@ public:
             }
 
             // Pick a row in this column to try
-            DLXNode *choice = col->down; // For now, pick the first.
-                                         // In a more refined approach, you might iterate through possibilities.
+            DLXNode *choice = ChooseBestRow(col);
             if (choice == col)
             {
                 // No choices in this column
@@ -339,11 +400,7 @@ public:
         // Uncover columns in reverse order of covering:
         // We covered lastChoice->column first, then the others.
         // So we uncover in reverse:
-        for (DLXNode *j = lastChoice->left; j != lastChoice; j = j->left)
-        {
-            UncoverColumn(static_cast<DLXColumn *>(j->column));
-        }
-        UncoverColumn(static_cast<DLXColumn *>(lastChoice->column));
+        UncoverRow(lastChoice);
         auto [rowIndex, colIndex, digit] = DecodePlacement(lastChoice);
         m_data.SetValue(rowIndex, colIndex, 0);
 
@@ -382,13 +439,7 @@ private:
     void ChooseRow(DLXNode *rowNode)
     {
         m_solutionStack.push_back(rowNode);
-        // Cover the chosen row’s column first
-        CoverColumn(static_cast<DLXColumn *>(rowNode->column));
-        // Then cover all other columns in that row
-        for (DLXNode *j = rowNode->right; j != rowNode; j = j->right)
-        {
-            CoverColumn(static_cast<DLXColumn *>(j->column));
-        }
+        CoverRow(rowNode);
         auto [r, c, d] = DecodePlacement(rowNode);
         m_data.SetValue(r, c, d);
     }

@@ -91,6 +91,26 @@
         "shared_mutex": "cpp",
         "source_location": "cpp",
         "stdfloat": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "barrier": "cpp",
+        "*.tcc": "cpp",
+        "codecvt": "cpp",
+        "coroutine": "cpp",
+        "cwctype": "cpp",
+        "expected": "cpp",
+        "string_view": "cpp",
+        "slist": "cpp",
+        "future": "cpp",
+        "latch": "cpp",
+        "numbers": "cpp",
+        "ranges": "cpp",
+        "semaphore": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp",
+        "syncstream": "cpp",
+        "cfenv": "cpp",
+        "generator": "cpp",
+        "print": "cpp",
+        "text_encoding": "cpp"
     }
 }

@@ -514,3 +514,4 @@ FodyWeavers.xsd
 **/out/
 *.db*
 **/keys/
+**/build/
