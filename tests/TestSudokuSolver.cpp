@@ -152,6 +152,29 @@ TEST(DynamicSudokuMatrix, RemoveValue)
     EXPECT_EQ(matrix.GetValue(2, 2), 0);
 }
 
+template<std::size_t N, template<std::size_t> class Solver, typename std::enable_if<std::is_base_of<ISolver<N>, Solver<N>>::value>::type * = nullptr>
+inline constexpr bool SolveHardSudoku()
+{
+    constexpr std::array<typename Solver<N>::DataType, 81> sudokuGame = {
+        0,0,0,0,0,0,0,0,0,
+        0,9,0,0,1,0,0,3,0,
+        0,0,6,0,2,0,7,0,0,
+        0,0,0,3,0,4,0,0,0,
+        2,1,0,0,0,0,0,9,8,
+        0,0,0,0,0,0,0,0,0,
+        0,0,2,5,0,6,4,0,0,
+        0,8,0,0,0,0,0,1,0,
+        0,0,0,0,0,0,0,0,0,
+    };
+    Solver<N> solver{std::move(sudokuGame)};
+    std::size_t index = 0;
+    while (solver.Advance())
+    {
+        index++;
+    }
+    return solver.IsSolved() && IsValidSudoku(solver.GetBoard());
+}
+
 template <std::size_t N, template <std::size_t> class Solver, typename std::enable_if<std::is_base_of<ISolver<N>, Solver<N>>::value>::type * = nullptr>
 inline constexpr bool CanBeSolved()
 {
@@ -365,5 +388,17 @@ TEST(DynamicSudokuMatrix, SolveSudokuBackTracking)
 TEST(SudokuMatrix, SolveSudokuDlx)
 {
     bool solved = CanBeSolved<3, DLXSolver>();
+    EXPECT_TRUE(solved);
+}
+
+TEST(SudokuMatrix, SolveHardSudokuBackTracking)
+{
+    bool solved = SolveHardSudoku<3, BackTrackingSolver>();
+    EXPECT_TRUE(solved);
+}
+
+TEST(SudokuMatrix, SolveHardSudokuDlx)
+{
+    bool solved = SolveHardSudoku<3, DLXSolver>();
     EXPECT_TRUE(solved);
 }
