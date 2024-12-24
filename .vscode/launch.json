@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/SudokuSolver",
-            "args": ["3"],
+            "args": ["3", "dlx"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

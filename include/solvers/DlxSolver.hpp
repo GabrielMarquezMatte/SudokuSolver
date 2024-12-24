@@ -40,6 +40,8 @@ private:
 
     // A stack to keep track of chosen rows while solving
     std::vector<DLXNode *> m_solutionStack;
+    std::vector<DLXNode *> m_nodes;
+    std::vector<DLXColumn *> m_columns;
 
     AdvanceResult m_currentState = AdvanceResult::Continue;
     bool m_solved = false;
@@ -221,6 +223,7 @@ private:
     inline DLXColumn *InitializeColumn(DLXColumn *header, std::size_t index)
     {
         DLXColumn *col = new DLXColumn;
+        m_columns.push_back(col);
         col->column = col;
         col->size = 0;
         col->index = index;
@@ -290,6 +293,10 @@ public:
                     DLXNode *n2 = new DLXNode;
                     DLXNode *n3 = new DLXNode;
                     DLXNode *n4 = new DLXNode;
+                    m_nodes.push_back(n1);
+                    m_nodes.push_back(n2);
+                    m_nodes.push_back(n3);
+                    m_nodes.push_back(n4);
 
                     // Link them horizontally
                     n1->right = n2;
@@ -324,20 +331,13 @@ public:
 
     ~DLXSolver()
     {
-        // Clean up all allocated nodes and columns
-        DLXColumn *cur = static_cast<DLXColumn *>(m_header->right);
-        while (cur != m_header)
+        for (DLXNode *n : m_nodes)
         {
-            DLXColumn *next = static_cast<DLXColumn *>(cur->right);
-            DLXNode *row = cur->down;
-            while (row != cur)
-            {
-                DLXNode *nextRow = row->down;
-                delete row;
-                row = nextRow;
-            }
-            delete cur;
-            cur = next;
+            delete n;
+        }
+        for (DLXColumn *c : m_columns)
+        {
+            delete c;
         }
         delete m_header;
     }
