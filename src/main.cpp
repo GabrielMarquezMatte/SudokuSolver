@@ -98,11 +98,11 @@ static bool RunClass(const SudokuMatrix<N> &matrix, sf::RenderWindow &window, sf
             if (event.type == sf::Event::Closed)
             {
                 window.close();
-                return solver.IsSolved();
+                return false;
             }
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R)
             {
-                return RunClass<N, Solver>(matrix, window, font, cellSize);
+                return true;
             }
         }
 
@@ -134,7 +134,7 @@ static bool RunClass(const SudokuMatrix<N> &matrix, sf::RenderWindow &window, sf
             }
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R)
             {
-                return RunClass<N, Solver>(matrix, window, font, cellSize);
+                return true;
             }
         }
         if (drawn)
@@ -156,7 +156,7 @@ static bool RunClass(const SudokuMatrix<N> &matrix, sf::RenderWindow &window, sf
         drawn = true;
     }
 
-    return solver.IsSolved();
+    return false;
 }
 
 template <std::size_t N, template <std::size_t> class Solver, typename std::enable_if<std::is_base_of<ISolver<N>, Solver<N>>::value>::type * = nullptr>
@@ -194,7 +194,7 @@ int Run(const float probability, pcg64 &rng)
     SudokuMatrix<N> data = GetPossibleMatrix<N, Solver>(probability, rng);
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Sudoku Solver Visualizer");
     constexpr std::size_t cellSize = 150 / N;
-    RunClass<N, Solver>(data, window, font, cellSize);
+    while(RunClass<N, Solver>(data, window, font, cellSize)) ;
     return 0;
 }
 
