@@ -40,7 +40,7 @@ private:
 
     // A stack to keep track of chosen rows while solving
     std::vector<DLXNode *> m_solutionStack;
-    std::vector<DLXNode *> m_nodes;
+    std::vector<DLXNode> m_nodes;
     std::array<DLXColumn, 4 * N * N * N * N> m_columns;
 
     AdvanceResult m_currentState = AdvanceResult::Continue;
@@ -223,7 +223,7 @@ private:
     inline DLXColumn *InitializeColumn(DLXColumn *header, std::size_t index)
     {
         DLXColumn &col = m_columns[index];
-        DLXColumn* ptr = &col;
+        DLXColumn *ptr = &col;
         col.column = ptr;
         col.size = 0;
         col.index = index;
@@ -250,6 +250,7 @@ public:
         constexpr std::size_t size = N * N;
         constexpr std::size_t squaredSize = size * size;
         constexpr std::size_t totalCols = 4 * size * size;
+        m_nodes.reserve(squaredSize * squaredSize);
         m_solutionStack.reserve(squaredSize);
 
         // Create column headers + header node
@@ -286,14 +287,10 @@ public:
                     std::size_t boxCol = 3 * squaredSize + boxIndex(row, column) * size + (d - 1);
 
                     // Create 4 nodes for this row
-                    DLXNode *n1 = new DLXNode;
-                    DLXNode *n2 = new DLXNode;
-                    DLXNode *n3 = new DLXNode;
-                    DLXNode *n4 = new DLXNode;
-                    m_nodes.push_back(n1);
-                    m_nodes.push_back(n2);
-                    m_nodes.push_back(n3);
-                    m_nodes.push_back(n4);
+                    DLXNode *n1 = &m_nodes.emplace_back();
+                    DLXNode *n2 = &m_nodes.emplace_back();
+                    DLXNode *n3 = &m_nodes.emplace_back();
+                    DLXNode *n4 = &m_nodes.emplace_back();
 
                     // Link them horizontally
                     n1->right = n2;
@@ -323,14 +320,6 @@ public:
                     insert_into_column(n4, &m_columns[boxCol]);
                 }
             }
-        }
-    }
-
-    ~DLXSolver()
-    {
-        for (DLXNode *n : m_nodes)
-        {
-            delete n;
         }
     }
 
