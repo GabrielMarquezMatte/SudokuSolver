@@ -128,7 +128,6 @@ static void BM_SolverRandom(benchmark::State &state)
                 innerIndex++;
                 if (innerIndex == 10'000'000)
                 {
-                    index += innerIndex;
                     break;
                 }
             }
@@ -140,7 +139,6 @@ static void BM_SolverRandom(benchmark::State &state)
                 innerIndex++;
                 if (innerIndex == 10'000'000)
                 {
-                    index += innerIndex;
                     break;
                 }
             }
@@ -173,9 +171,7 @@ static void BM_DynamicSolverRandom(benchmark::State &state)
             innerIndex++;
             if (innerIndex == 10'000'000)
             {
-                index += innerIndex;
-                state.SetItemsProcessed(index);
-                return;
+                break;
             }
         }
         index += innerIndex;
