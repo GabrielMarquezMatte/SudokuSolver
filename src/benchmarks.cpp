@@ -129,8 +129,7 @@ static void BM_SolverRandom(benchmark::State &state)
                 if (innerIndex == 10'000'000)
                 {
                     index += innerIndex;
-                    state.SetItemsProcessed(index);
-                    return;
+                    break;
                 }
             }
         }
@@ -142,8 +141,7 @@ static void BM_SolverRandom(benchmark::State &state)
                 if (innerIndex == 10'000'000)
                 {
                     index += innerIndex;
-                    state.SetItemsProcessed(index);
-                    return;
+                    break;
                 }
             }
         }

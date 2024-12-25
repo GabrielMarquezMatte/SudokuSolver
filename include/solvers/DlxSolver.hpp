@@ -36,12 +36,12 @@ public:
 
 private:
     SudokuMatrix<N> m_data;
-    DLXColumn *m_header = nullptr;
+    DLXColumn m_header = {};
 
     // A stack to keep track of chosen rows while solving
     std::vector<DLXNode *> m_solutionStack;
     std::vector<DLXNode *> m_nodes;
-    std::vector<DLXColumn *> m_columns;
+    std::array<DLXColumn, 4 * N * N * N * N> m_columns;
 
     AdvanceResult m_currentState = AdvanceResult::Continue;
     bool m_solved = false;
@@ -106,7 +106,7 @@ private:
     {
         DLXColumn *best = nullptr;
         std::size_t minSize = std::numeric_limits<std::size_t>::max();
-        for (DLXColumn *c = (DLXColumn *)m_header->right; c != m_header; c = (DLXColumn *)c->right)
+        for (DLXColumn *c = (DLXColumn *)m_header.right; c != &m_header; c = (DLXColumn *)c->right)
         {
             if (c->size < minSize)
             {
@@ -222,19 +222,18 @@ private:
 
     inline DLXColumn *InitializeColumn(DLXColumn *header, std::size_t index)
     {
-        DLXColumn *col = new DLXColumn;
-        m_columns.push_back(col);
-        col->column = col;
-        col->size = 0;
-        col->index = index;
-        // Insert col right of header
-        col->right = header;
-        col->left = header->left;
-        header->left->right = col;
-        header->left = col;
-        col->up = col;
-        col->down = col;
-        return col;
+        DLXColumn &col = m_columns[index];
+        DLXColumn* ptr = &col;
+        col.column = ptr;
+        col.size = 0;
+        col.index = index;
+        col.right = header;
+        col.left = header->left;
+        header->left->right = ptr;
+        header->left = ptr;
+        col.up = ptr;
+        col.down = ptr;
+        return ptr;
     }
 
 public:
@@ -254,17 +253,15 @@ public:
         m_solutionStack.reserve(squaredSize);
 
         // Create column headers + header node
-        m_header = new DLXColumn;
-        m_header->left = m_header->right = m_header;
-        m_header->up = m_header->down = m_header;
-        m_header->column = m_header;
-        m_header->size = 0; // not really used for header
+        m_header.left = m_header.right = &m_header;
+        m_header.up = m_header.down = &m_header;
+        m_header.column = &m_header;
+        m_header.size = 0; // not really used for header
 
         // Create an array of column headers
-        std::array<DLXColumn *, totalCols> columns;
         for (std::size_t i = 0; i < totalCols; i++)
         {
-            columns[i] = InitializeColumn(m_header, i);
+            InitializeColumn(&m_header, i);
         }
 
         // Function to get box index from (r,c)
@@ -320,10 +317,10 @@ public:
                     };
 
                     // Insert each node into corresponding column
-                    insert_into_column(n1, columns[cellCol]);
-                    insert_into_column(n2, columns[rowCol]);
-                    insert_into_column(n3, columns[colCol]);
-                    insert_into_column(n4, columns[boxCol]);
+                    insert_into_column(n1, &m_columns[cellCol]);
+                    insert_into_column(n2, &m_columns[rowCol]);
+                    insert_into_column(n3, &m_columns[colCol]);
+                    insert_into_column(n4, &m_columns[boxCol]);
                 }
             }
         }
@@ -335,11 +332,6 @@ public:
         {
             delete n;
         }
-        for (DLXColumn *c : m_columns)
-        {
-            delete c;
-        }
-        delete m_header;
     }
 
     inline constexpr bool IsSolved() const noexcept override { return m_solved; }
@@ -354,7 +346,7 @@ public:
             return false;
         }
 
-        if (m_header->right == m_header)
+        if (m_header.right == &m_header)
         {
             // No columns left: solution found
             m_solved = true;
