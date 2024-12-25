@@ -92,7 +92,7 @@ TEST(DynamicSudokuMatrix, Initialization)
         0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0};
-    DynamicSudokuMatrix matrix2{sudokuGame, 3};
+    DynamicSudokuMatrix matrix2{std::move(sudokuGame), 3};
     EXPECT_EQ(matrix1, matrix2);
 }
 
@@ -168,9 +168,19 @@ inline constexpr bool SolveHardSudoku()
     };
     Solver<N> solver{std::move(sudokuGame)};
     std::size_t index = 0;
-    while (solver.Advance())
+    if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
     {
-        index++;
+        while (solver.Advance(false))
+        {
+            index++;
+        }
+    }
+    else
+    {
+        while (solver.Advance())
+        {
+            index++;
+        }
     }
     return solver.IsSolved() && IsValidSudoku(solver.GetBoard());
 }
