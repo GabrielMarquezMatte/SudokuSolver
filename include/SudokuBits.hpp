@@ -10,7 +10,9 @@ public:
     using FlagType = std::conditional_t<(N * N <= 8), std::uint8_t,
                                         std::conditional_t<(N * N <= 16), std::uint16_t,
                                                            std::conditional_t<(N * N <= 32), std::uint32_t, std::uint64_t>>>;
-    using DataType = std::uint8_t;
+    using DataType = std::conditional_t<(N * N <= std::numeric_limits<std::uint8_t>::max()), std::uint8_t,
+                                        std::conditional_t<(N * N <= std::numeric_limits<std::uint16_t>::max()), std::uint16_t,
+                                                           std::conditional_t<(N * N <= std::numeric_limits<std::uint32_t>::max()), std::uint32_t, std::uint64_t>>>;
 
 private:
     FlagType m_flag;
