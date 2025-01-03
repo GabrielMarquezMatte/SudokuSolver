@@ -166,23 +166,44 @@ inline constexpr bool SolveHardSudoku()
         0,8,0,0,0,0,0,1,0,
         0,0,0,0,0,0,0,0,0,
     };
-    Solver<N> solver{std::move(sudokuGame)};
-    std::size_t index = 0;
+    constexpr auto getSolver = [](const std::array<typename Solver<N>::DataType, 81>& sudokuGame) -> Solver<N>
+    {
+        Solver<N> solver{sudokuGame};
+        if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
+        {
+            while (solver.Advance(false));
+        }
+        else
+        {
+            while (solver.Advance());
+        }
+        return solver;
+    };
+    constexpr auto validateSolver = [](const Solver<N>& solver) -> bool
+    {
+        const auto& board = solver.GetBoard();
+        for (std::size_t i = 0; i < 9; ++i)
+        {
+            for (std::size_t j = 0; j < 9; ++j)
+            {
+                if (board.GetValue(i, j) == 0)
+                {
+                    return false;
+                }
+            }
+        }
+        return solver.IsSolved() && IsValidSudoku(board);
+    };
     if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
     {
-        while (solver.Advance(false))
-        {
-            index++;
-        }
+        Solver<N> solver = getSolver(sudokuGame);
+        return validateSolver(solver);
     }
     else
     {
-        while (solver.Advance())
-        {
-            index++;
-        }
+        constexpr Solver<N> solver = getSolver(sudokuGame);
+        return validateSolver(solver);
     }
-    return solver.IsSolved() && IsValidSudoku(solver.GetBoard());
 }
 
 template <std::size_t N, template <std::size_t> class Solver, typename std::enable_if<std::is_base_of<ISolver<N>, Solver<N>>::value>::type * = nullptr>
@@ -210,7 +231,18 @@ inline constexpr bool CanBeSolved()
     {
         while (solver.Advance());
     }
-    return solver.IsSolved() && IsValidSudoku(solver.GetBoard());
+    const auto& board = solver.GetBoard();
+    for (std::size_t i = 0; i < 9; ++i)
+    {
+        for (std::size_t j = 0; j < 9; ++j)
+        {
+            if (board.GetValue(i, j) == 0)
+            {
+                return false;
+            }
+        }
+    }
+    return solver.IsSolved() && IsValidSudoku(board);
 }
 
 template <class Solver, typename std::enable_if<std::is_base_of<IDynamicSolver, Solver>::value>::type * = nullptr>
@@ -230,7 +262,18 @@ inline bool CanBeSolved()
                                          3};
     Solver solver{std::move(sudokuGameMatrix)};
     while (solver.Advance());
-    return solver.IsSolved() && IsValidSudoku(solver.GetBoard());
+    const auto& board = solver.GetBoard();
+    for (std::size_t i = 0; i < 9; ++i)
+    {
+        for (std::size_t j = 0; j < 9; ++j)
+        {
+            if (board.GetValue(i, j) == 0)
+            {
+                return false;
+            }
+        }
+    }
+    return solver.IsSolved() && IsValidSudoku(board);
 }
 
 TEST(SudokuMatrix, CanCreateRandomSudoku)

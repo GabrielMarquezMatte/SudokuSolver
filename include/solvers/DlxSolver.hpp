@@ -180,7 +180,7 @@ private:
         return m_data.GetPossibleValues(row, column);
     }
 
-    inline DLXColumn *InitializeColumn(DLXColumn *header, std::size_t index)
+    inline constexpr DLXColumn *InitializeColumn(DLXColumn *header, std::size_t index)
     {
         DLXColumn &col = m_columns[index];
         DLXColumn *ptr = &col;
@@ -197,7 +197,7 @@ private:
     }
 
 public:
-    DLXSolver(const SudokuMatrix<N> &data) : m_data(data)
+    constexpr DLXSolver(const SudokuMatrix<N> &data) : m_data(data)
     {
         // Construct the exact cover matrix and initialize DLX structure.
         // Build all columns and rows corresponding to Sudoku constraints:
@@ -287,7 +287,7 @@ public:
     inline constexpr AdvanceResult GetStatus() const noexcept override { return m_currentState; }
     inline constexpr const SudokuMatrix<N> &GetBoard() const noexcept override { return m_data; }
 
-    bool Advance(bool insertEveryStep)
+    constexpr bool Advance(bool insertEveryStep)
     {
         if (m_solved || m_currentState == AdvanceResult::Finished)
         {
@@ -356,7 +356,7 @@ public:
         ChooseRow(nextChoice, insertEveryStep);
         return Continue();
     }
-    inline bool Advance() override
+    inline constexpr bool Advance() override
     {
         return Advance(true);
     }
@@ -374,7 +374,7 @@ private:
         return true;
     }
 
-    inline void ChooseRow(DLXNode *rowNode, bool insertValue)
+    inline constexpr void ChooseRow(DLXNode *rowNode, bool insertValue)
     {
         m_solutionStack.push_back(rowNode);
         CoverRow(rowNode);

@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <bit>
+#include <bitset>
 #include <boost/dynamic_bitset.hpp>
 
 template <std::size_t N>
@@ -102,7 +103,7 @@ template <std::size_t N>
 struct SudokuBits
 {
 public:
-    using FlagType = typename BitSetIterator<N>::FlagType;
+    using FlagType = std::bitset<N * N>;
     using DataType = typename BitSetIterator<N>::DataType;
 private:
     std::array<FlagType, N * N * 3> m_bits;

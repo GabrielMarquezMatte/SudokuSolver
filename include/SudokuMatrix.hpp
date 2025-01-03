@@ -157,7 +157,9 @@ public:
 
     inline constexpr BitSetIterator<N> GetPossibleValues(std::size_t row, std::size_t col, std::size_t squareIndex) const
     {
-        return {m_dataBits.GetAvailableValues(row, col, squareIndex)};
+        using IntType = typename BitSetIterator<N>::FlagType;
+        auto availableValues = m_dataBits.GetAvailableValues(row, col, squareIndex);
+        return {static_cast<IntType>(availableValues.to_ullong())};
     }
 
     inline constexpr BitSetIterator<N> GetPossibleValues(std::size_t row, std::size_t col) const

@@ -111,6 +111,9 @@
         "cfenv": "cpp",
         "generator": "cpp",
         "print": "cpp",
-        "text_encoding": "cpp"
+        "text_encoding": "cpp",
+        "mdspan": "cpp",
+        "*.rh": "cpp",
+        "*.ipp": "cpp"
     }
 }

@@ -183,7 +183,7 @@ SudokuMatrix<N> GetPossibleMatrix(float probability, pcg64 &rng)
             while (solver.Advance())
             {
                 index++;
-                if (index % 20'000'000 == 0)
+                if (index % 100'000'000 == 0)
                 {
                     break;
                 }
