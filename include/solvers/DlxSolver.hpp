@@ -117,6 +117,46 @@ private:
         return best;
     }
 
+    constexpr DLXNode *ChooseBestRow(DLXColumn *column)
+    {
+        if (column->size == 0)
+        {
+            return column; // Retorna a própria coluna como "sinal" de que não há escolha
+        }
+
+        // Vamos iterar pelas linhas para achar a que minimize a soma dos sizes das colunas que ela cobre.
+        DLXNode *bestRow = nullptr;
+        std::size_t bestScore = std::numeric_limits<std::size_t>::max();
+
+        // Percorre todas as linhas abaixo de col até voltar ao topo (DLXNode* i = col->down; i != col; i = i->down).
+        for (DLXNode *row = column->down; row != column; row = row->down)
+        {
+            std::size_t rowScore = 0;
+
+            // Para cada coluna que este row cobre, soma o DLXColumn::size
+            // Lembre-se de que cada row cobre 4 colunas no Sudoku (cell, row-constraint, col-constraint, box-constraint).
+            DLXNode *aux = row->right;
+            while (true)
+            {
+                DLXColumn *cAux = static_cast<DLXColumn *>(aux->column);
+                rowScore += cAux->size;
+
+                if (aux == row)
+                    break;
+                aux = aux->right;
+            }
+
+            // Se essa soma for menor que a melhor até agora, atualizamos
+            if (rowScore < bestScore)
+            {
+                bestScore = rowScore;
+                bestRow = row;
+            }
+        }
+        // Retorna a melhor linha encontrada ou a coluna em si (caso não haja nenhuma)
+        return bestRow ? bestRow : column;
+    }
+
     constexpr std::pair<std::size_t, std::size_t> GetRowColIndices(const std::span<const std::size_t> indices)
     {
         constexpr std::size_t size = N * N;
@@ -318,7 +358,7 @@ public:
             }
 
             // Pick a row in this column to try
-            DLXNode *choice = col->down;
+            DLXNode *choice = ChooseBestRow(col);
             if (choice == col)
             {
                 // No choices in this column

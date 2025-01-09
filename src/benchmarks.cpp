@@ -55,26 +55,23 @@ static void BM_SolverStatic(benchmark::State &state)
         0, 6, 0, 0, 0, 0, 2, 8, 0,
         0, 0, 0, 4, 1, 9, 0, 0, 5,
         0, 0, 0, 0, 8, 0, 0, 7, 9};
-    std::int64_t index = 0;
+    std::int64_t solves = 0;
     for (auto _ : state)
     {
         Solver<N> solver{sudokuGame};
         if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
         {
             while (solver.Advance(false))
-            {
-                index++;
-            }
+                ;
         }
         else
         {
             while (solver.Advance())
-            {
-                index++;
-            }
+                ;
         }
+        solves++;
     }
-    state.SetItemsProcessed(index);
+    state.SetItemsProcessed(solves);
 }
 
 BENCHMARK(BM_SolverStatic<3, BackTrackingSolver>);
@@ -101,9 +98,8 @@ static void BM_DynamicSolverStatic(benchmark::State &state)
     {
         Solver solver{sudokuGameMatrix};
         while (solver.Advance())
-        {
-            index++;
-        }
+            ;
+        index++;
     }
     state.SetItemsProcessed(index);
 }
@@ -116,7 +112,7 @@ static void BM_SolverRandom(benchmark::State &state)
     pcg64 rng(1);
     float probability = static_cast<float>(state.range(0)) / 100.0f;
     SudokuMatrix<N> sudokuGame = CreateBoard<N>(probability, rng);
-    std::int64_t index = 0;
+    std::int64_t solves = 0;
     for (auto _ : state)
     {
         Solver<N> solver{sudokuGame};
@@ -143,9 +139,9 @@ static void BM_SolverRandom(benchmark::State &state)
                 }
             }
         }
-        index += innerIndex;
+        solves++;
     }
-    state.SetItemsProcessed(index);
+    state.SetItemsProcessed(solves);
 }
 
 BENCHMARK(BM_SolverRandom<3, DLXSolver>)->DenseRange(30, 70, 10);
@@ -174,7 +170,7 @@ static void BM_DynamicSolverRandom(benchmark::State &state)
                 break;
             }
         }
-        index += innerIndex;
+        index++;
     }
     state.SetItemsProcessed(index);
 }
