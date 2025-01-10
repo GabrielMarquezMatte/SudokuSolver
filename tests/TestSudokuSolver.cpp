@@ -166,7 +166,7 @@ inline constexpr bool SolveHardSudoku()
         0,8,0,0,0,0,0,1,0,
         0,0,0,0,0,0,0,0,0,
     };
-    constexpr auto getSolver = [](const std::array<typename Solver<N>::DataType, 81>& sudokuGame) -> Solver<N>
+    static constexpr auto getSolver = [](const std::array<typename Solver<N>::DataType, 81>& sudokuGame) -> Solver<N>
     {
         Solver<N> solver{sudokuGame};
         if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
@@ -179,7 +179,7 @@ inline constexpr bool SolveHardSudoku()
         }
         return solver;
     };
-    constexpr auto validateSolver = [](const Solver<N>& solver) -> bool
+    static constexpr auto validateSolver = [](const Solver<N>& solver) -> bool
     {
         const auto& board = solver.GetBoard();
         for (std::size_t i = 0; i < 9; ++i)
