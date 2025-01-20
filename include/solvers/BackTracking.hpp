@@ -106,7 +106,7 @@ public:
         }
         std::size_t squareIndex = SudokuMatrix<N>::SquareIndex(m_currentRow, m_currentCol);
         auto possibleValues = m_data.GetPossibleValues(m_currentRow, m_currentCol, squareIndex);
-        if (possibleValues == 0)
+        if (!possibleValues.Any())
         {
             return BackTrack();
         }

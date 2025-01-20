@@ -3,14 +3,137 @@
 #include <bit>
 #include <bitset>
 #include <boost/dynamic_bitset.hpp>
+#include <algorithm> // for std::fill_n, etc.
+
+template <std::size_t BITS>
+class FastBitset
+{
+    static constexpr std::size_t BITS_PER_CHUNK = 64;
+    static constexpr std::size_t NUM_CHUNKS =
+        (BITS + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK; // ceiling division
+
+    std::array<std::uint64_t, NUM_CHUNKS> m_data{};
+
+public:
+    // Default constructor: all bits off
+    constexpr FastBitset() = default;
+
+    // Construct from uint64_t (for small sets) or from an initializer:
+    inline constexpr explicit FastBitset(std::uint64_t value)
+    {
+        m_data[0] = value;
+        for (std::size_t i = 1; i < NUM_CHUNKS; ++i)
+            m_data[i] = 0ULL;
+    }
+
+    // Set bit 'pos' to 1 (if 'val' is true) or 0 (if 'val' is false)
+    inline constexpr void set(std::size_t pos, bool val = true)
+    {
+        if (pos >= BITS)
+            return; // out of range
+        const std::size_t chunkIndex = pos / BITS_PER_CHUNK;
+        const std::size_t bitIndex = pos % BITS_PER_CHUNK;
+        std::uint64_t mask = (std::uint64_t{1} << bitIndex);
+        if (val)
+        {
+            m_data[chunkIndex] |= mask;
+            return;
+        }
+        m_data[chunkIndex] &= ~mask;
+    }
+
+    // Reset a single bit (turn off)
+    inline constexpr void reset(std::size_t pos)
+    {
+        if (pos >= BITS)
+            return;
+        const std::size_t chunkIndex = pos / BITS_PER_CHUNK;
+        const std::size_t bitIndex = pos % BITS_PER_CHUNK;
+        m_data[chunkIndex] &= ~(std::uint64_t{1} << bitIndex);
+    }
+
+    // Reset all bits
+    inline constexpr void reset()
+    {
+        for (auto &chunk : m_data)
+            chunk = 0ULL;
+    }
+
+    // Return whether bit 'pos' is set
+    inline constexpr bool test(std::size_t pos) const
+    {
+        if (pos >= BITS)
+            return false;
+        const std::size_t chunkIndex = pos / BITS_PER_CHUNK;
+        const std::size_t bitIndex = pos % BITS_PER_CHUNK;
+        return (m_data[chunkIndex] & (std::uint64_t{1} << bitIndex)) != 0ULL;
+    }
+
+    // Return total number of set bits
+    inline constexpr int count() const
+    {
+        int result = 0;
+        for (const std::uint64_t chunk : m_data)
+        {
+            result += std::popcount(chunk);
+        }
+        return result;
+    }
+
+    // Is there any bit set?
+    inline constexpr bool any() const
+    {
+        for (const std::uint64_t chunk : m_data)
+            if (chunk != 0ULL)
+                return true;
+        return false;
+    }
+
+    // Are all bits off?
+    inline constexpr bool none() const
+    {
+        return !any();
+    }
+
+    // Operator== for comparing two FastBitset<BITS>
+    inline friend constexpr bool operator==(FastBitset const &lhs, FastBitset const &rhs)
+    {
+        return lhs.m_data == rhs.m_data;
+    }
+
+    // Operator!=
+    inline friend constexpr bool operator!=(FastBitset const &lhs, FastBitset const &rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    // Return the least significant set bit index, or BITS if none is set.
+    constexpr std::size_t findLSB() const
+    {
+        for (std::size_t chunkIndex = 0; chunkIndex < NUM_CHUNKS; ++chunkIndex)
+        {
+            std::uint64_t chunk = m_data[chunkIndex];
+            if (chunk == 0ULL)
+            {
+                continue;
+            }
+            const unsigned tz = std::countr_zero(chunk);
+            std::size_t bitPos = chunkIndex * BITS_PER_CHUNK + tz;
+            if (bitPos < BITS)
+            {
+                return bitPos;
+            }
+            return BITS;
+        }
+        return BITS;
+    }
+};
 
 template <std::size_t N>
 struct BitSetIterator
 {
 public:
-    using FlagType = std::conditional_t<(N * N <= 8), std::uint8_t,
-                                        std::conditional_t<(N * N <= 16), std::uint16_t,
-                                                           std::conditional_t<(N * N <= 32), std::uint32_t, std::uint64_t>>>;
+    using FlagType = FastBitset<N * N>;
     using DataType = std::conditional_t<(N * N <= std::numeric_limits<std::uint8_t>::max()), std::uint8_t,
                                         std::conditional_t<(N * N <= std::numeric_limits<std::uint16_t>::max()), std::uint16_t,
                                                            std::conditional_t<(N * N <= std::numeric_limits<std::uint32_t>::max()), std::uint32_t, std::uint64_t>>>;
@@ -19,40 +142,62 @@ private:
     FlagType m_flag;
 
 public:
-    constexpr BitSetIterator(FlagType flag) : m_flag(flag) {}
-    // Iterator functions
+    constexpr BitSetIterator() : m_flag() {}
+    constexpr BitSetIterator(const FlagType &flag) : m_flag(flag) {}
+
+    // ++ removes the least significant set bit.
     inline constexpr BitSetIterator &operator++()
     {
-        // Remove the least significant set bit
-        m_flag &= (m_flag - 1);
+        std::size_t idx = m_flag.findLSB();
+        if (idx < N * N)
+        {
+            // Reset that bit.
+            m_flag.reset(idx);
+        }
         return *this;
     }
+
+    // * returns the 1-based index of the least significant set bit.
     inline constexpr DataType operator*() const
     {
-        // Get the least significant set bit
-        FlagType newValue = m_flag & -static_cast<std::make_signed_t<FlagType>>(m_flag);
-        int count = std::countr_zero(newValue);
-        return static_cast<DataType>(count + 1);
+        std::size_t idx = m_flag.findLSB();
+        // Original code adds 1 to the 0-based position:
+        return static_cast<DataType>(idx + 1);
     }
-    inline constexpr bool operator!=(const BitSetIterator<N> &other) const
+
+    // Compare iterators by comparing the underlying bitset.
+    inline constexpr bool operator!=(const BitSetIterator &other) const
     {
         return m_flag != other.m_flag;
     }
-    inline constexpr bool operator==(const FlagType value) const
+
+    // Compare against a FlagType (bitset). Equivalent to `iterator.m_flag == value`.
+    inline constexpr bool operator==(const FlagType &value) const
     {
         return m_flag == value;
     }
-    inline constexpr BitSetIterator<N> begin()
+
+    // begin() returns an iterator starting with the same bitset.
+    inline constexpr BitSetIterator begin() const
     {
-        return {m_flag};
+        return BitSetIterator(m_flag);
     }
-    static inline constexpr BitSetIterator<N> end()
+
+    // end() returns an iterator with an empty bitset (no set bits).
+    static inline constexpr BitSetIterator end()
     {
-        return {0};
+        return BitSetIterator(FlagType{});
     }
+
+    // Returns the total number of set bits.
     inline constexpr int Count() const
     {
-        return std::popcount(m_flag);
+        return m_flag.count();
+    }
+
+    inline constexpr bool Any() const
+    {
+        return m_flag.any();
     }
 };
 
@@ -60,6 +205,7 @@ struct DynamicBitSetIterator
 {
 public:
     using DataType = std::uint8_t;
+
 private:
     using size_type = boost::dynamic_bitset<>::size_type;
     boost::dynamic_bitset<> m_bitset;
@@ -105,10 +251,16 @@ struct SudokuBits
 public:
     using FlagType = std::bitset<N * N>;
     using DataType = typename BitSetIterator<N>::DataType;
+
 private:
     std::array<FlagType, N * N * 3> m_bits;
     static constexpr std::size_t size = N * N;
-    static constexpr FlagType AllBitsSet = (1ULL << size) - 1;
+    static constexpr FlagType AllBitsSet = []()
+    {
+        FlagType bits;
+        bits.set();
+        return bits;
+    }();
 
 public:
     inline constexpr void SetValue(std::size_t row, std::size_t col, std::size_t square, DataType value)
@@ -149,6 +301,7 @@ struct SudokuDynamicBits
 {
 public:
     using DataType = typename DynamicBitSetIterator::DataType;
+
 private:
     boost::dynamic_bitset<> m_allBitsSet;
     std::vector<boost::dynamic_bitset<>> m_bits;

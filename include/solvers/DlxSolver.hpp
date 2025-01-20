@@ -174,8 +174,10 @@ private:
         DataType val = m_data.GetValue(row, column);
         if (val != 0)
         {
-            typename BitSetIterator<N>::FlagType value = val - 1;
-            return {static_cast<BitSetIterator<N>::FlagType>(1ULL << value)};
+            std::size_t value = val - 1;
+            typename BitSetIterator<N>::FlagType flag;
+            flag.set(value);
+            return {flag};
         }
         return m_data.GetPossibleValues(row, column);
     }

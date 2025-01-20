@@ -20,7 +20,7 @@ SudokuMatrix<N> CreateBoard(const float probabilityOfFilled, pcg64 &randomDevice
                 continue;
             }
             auto possibleValues = board.GetPossibleValues(row, col);
-            if (possibleValues == 0)
+            if (!possibleValues.Any())
             {
                 continue;
             }

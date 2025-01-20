@@ -166,7 +166,7 @@ inline constexpr bool SolveHardSudoku()
         0,8,0,0,0,0,0,1,0,
         0,0,0,0,0,0,0,0,0,
     };
-    static constexpr auto getSolver = [](const std::array<typename Solver<N>::DataType, 81>& sudokuGame) -> Solver<N>
+    constexpr auto getSolver = [](const std::array<typename Solver<N>::DataType, 81>& sudokuGame) -> Solver<N>
     {
         Solver<N> solver{sudokuGame};
         if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
@@ -179,7 +179,7 @@ inline constexpr bool SolveHardSudoku()
         }
         return solver;
     };
-    static constexpr auto validateSolver = [](const Solver<N>& solver) -> bool
+    constexpr auto validateSolver = [](const Solver<N>& solver) -> bool
     {
         const auto& board = solver.GetBoard();
         for (std::size_t i = 0; i < 9; ++i)
@@ -194,16 +194,12 @@ inline constexpr bool SolveHardSudoku()
         }
         return solver.IsSolved() && IsValidSudoku(board);
     };
-    if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
+    constexpr auto solve = [](const std::array<typename Solver<N>::DataType, 81>& sudokuGame) -> bool
     {
         Solver<N> solver = getSolver(sudokuGame);
         return validateSolver(solver);
-    }
-    else
-    {
-        constexpr Solver<N> solver = getSolver(sudokuGame);
-        return validateSolver(solver);
-    }
+    };
+    return solve(sudokuGame);
 }
 
 template <std::size_t N, template <std::size_t> class Solver, typename std::enable_if<std::is_base_of<ISolver<N>, Solver<N>>::value>::type * = nullptr>
@@ -222,27 +218,40 @@ inline constexpr bool CanBeSolved()
         0, 6, 0, 0, 0, 0, 2, 8, 0,
         0, 0, 0, 4, 1, 9, 0, 0, 5,
         0, 0, 0, 0, 8, 0, 0, 7, 9};
-    Solver<N> solver{std::move(sudokuGame)};
-    if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
+    constexpr auto getSolver = [](const std::array<typename Solver<N>::DataType, 81> &sudokuGame) -> Solver<N>
     {
-        while (solver.Advance(false));
-    }
-    else
-    {
-        while (solver.Advance());
-    }
-    const auto& board = solver.GetBoard();
-    for (std::size_t i = 0; i < 9; ++i)
-    {
-        for (std::size_t j = 0; j < 9; ++j)
+        Solver<N> solver{sudokuGame};
+        if constexpr (std::is_same_v<Solver<N>, DLXSolver<N>>)
         {
-            if (board.GetValue(i, j) == 0)
+            while (solver.Advance(false));
+        }
+        else
+        {
+            while (solver.Advance());
+        }
+        return solver;
+    };
+    constexpr auto validateSolver = [](const Solver<N> &solver) -> bool
+    {
+        const auto &board = solver.GetBoard();
+        for (std::size_t i = 0; i < 9; ++i)
+        {
+            for (std::size_t j = 0; j < 9; ++j)
             {
-                return false;
+                if (board.GetValue(i, j) == 0)
+                {
+                    return false;
+                }
             }
         }
-    }
-    return solver.IsSolved() && IsValidSudoku(board);
+        return solver.IsSolved() && IsValidSudoku(board);
+    };
+    constexpr auto solve = [](const std::array<typename Solver<N>::DataType, 81> &sudokuGame) -> bool
+    {
+        Solver<N> solver = getSolver(sudokuGame);
+        return validateSolver(solver);
+    };
+    return solve(sudokuGame);
 }
 
 template <class Solver, typename std::enable_if<std::is_base_of<IDynamicSolver, Solver>::value>::type * = nullptr>
@@ -298,7 +307,10 @@ TEST(SudokuMatrix, CheckBitSetIterator)
 {
     static constexpr auto getIterator = [](int iterations)
     {
-        BitSetIterator<3> it{0b101};
+        FastBitset<9> bitset;
+        bitset.set(0);
+        bitset.set(2);
+        BitSetIterator<3> it{bitset};
         for (int i = 0; i < iterations; ++i)
         {
             ++it;
@@ -445,8 +457,7 @@ TEST(SudokuMatrix, SolveSudokuDlx)
 
 TEST(SudokuMatrix, SolveHardSudokuBackTracking)
 {
-    bool solved = SolveHardSudoku<3, BackTrackingSolver>();
-    EXPECT_TRUE(solved);
+    static_assert(SolveHardSudoku<3, BackTrackingSolver>());
 }
 
 TEST(SudokuMatrix, SolveHardSudokuDlx)
