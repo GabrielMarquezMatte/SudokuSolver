@@ -457,7 +457,8 @@ TEST(SudokuMatrix, SolveSudokuDlx)
 
 TEST(SudokuMatrix, SolveHardSudokuBackTracking)
 {
-    static_assert(SolveHardSudoku<3, BackTrackingSolver>());
+    bool solved = SolveHardSudoku<3, BackTrackingSolver>();
+    EXPECT_TRUE(solved);
 }
 
 TEST(SudokuMatrix, SolveHardSudokuDlx)
