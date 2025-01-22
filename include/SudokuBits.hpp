@@ -4,6 +4,7 @@
 #include <bitset>
 #include <boost/dynamic_bitset.hpp>
 #include <algorithm> // for std::fill_n, etc.
+#include <immintrin.h>
 
 template <std::size_t BITS>
 class FastBitset
@@ -13,6 +14,23 @@ class FastBitset
         (BITS + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK; // ceiling division
 
     std::array<std::uint64_t, NUM_CHUNKS> m_data{};
+
+    static inline int lzcnt_si256(const __m256i vec)
+    {
+        __m256i vnonzero = _mm256_cmpeq_epi32(vec, _mm256_setzero_si256());
+        std::uint32_t nzmask = ~_mm256_movemask_epi8(vnonzero); //  1 for bytes that are part of non-zero dwords
+        // nzmask |= 0xf;  // branchless clamp to last elem
+        if (nzmask == 0) // all 32 bits came from vpmovmskb, so NOT didn't introduce any constant 1s
+        {
+            return 256; // don't access outside the array
+        }
+        alignas(32) std::uint32_t elems[8];
+        _mm256_storeu_si256((__m256i *)elems, vec);
+        unsigned int lzbytes = _lzcnt_u32(nzmask); // bytes above the dword containing the nonzero bit.
+        unsigned char *end_elem = 28 + (unsigned char *)elems;
+        uint32_t *nz_elem = (uint32_t *)(end_elem - lzbytes); // idx = 31-(lzcnt+3) = 28-lzcnt
+        return 8 * lzbytes + _lzcnt_u32(*nz_elem);
+    }
 
 public:
     // Default constructor: all bits off
@@ -110,6 +128,45 @@ public:
     // Return the least significant set bit index, or BITS if none is set.
     constexpr std::size_t findLSB() const
     {
+#ifdef __AVX2__
+        // 1) Processamos em blocos de 4x64 bits (256 bits) por vez.
+        // Cada "for" verifica se 4 blocos são todos zero usando intrínsecos AVX2.
+        // Se forem todos zero, pulamos de imediato. Se não, checamos blocos
+        // individualmente na sequência.
+        constexpr std::size_t STEP = 4; // 4 blocos de 64 bits = 256 bits
+        std::size_t i = 0;
+
+        for (; i + STEP <= NUM_CHUNKS; i += STEP)
+        {
+            // Carrega 256 bits (4 * 64) da memória
+            __m256i v = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(&m_data[i]));
+
+            // Se todos bits de v forem zero, avança
+            if (_mm256_testz_si256(v, v) != 0)
+            {
+                continue;
+            }
+            int tz = lzcnt_si256(v);
+            std::size_t bitPos = i * BITS_PER_CHUNK + tz;
+            return (bitPos < BITS) ? bitPos : BITS;
+        }
+
+        // 2) Resto (caso a quantidade de blocos não seja múltipla de 4)
+        for (; i < NUM_CHUNKS; ++i)
+        {
+            std::uint64_t chunk = m_data[i];
+            if (chunk != 0ULL)
+            {
+                unsigned tz = std::countr_zero(chunk);
+                std::size_t bitPos = i * BITS_PER_CHUNK + tz;
+                return (bitPos < BITS) ? bitPos : BITS;
+            }
+        }
+
+        return BITS; // Não encontrou nenhum bit set
+
+#else
+        // Fallback escalar se não houver suporte a AVX2
         for (std::size_t chunkIndex = 0; chunkIndex < NUM_CHUNKS; ++chunkIndex)
         {
             std::uint64_t chunk = m_data[chunkIndex];
@@ -118,14 +175,11 @@ public:
                 continue;
             }
             const unsigned tz = std::countr_zero(chunk);
-            std::size_t bitPos = chunkIndex * BITS_PER_CHUNK + tz;
-            if (bitPos < BITS)
-            {
-                return bitPos;
-            }
-            return BITS;
+            const std::size_t bitPos = chunkIndex * BITS_PER_CHUNK + tz;
+            return (bitPos < BITS) ? bitPos : BITS;
         }
         return BITS;
+#endif
     }
 };
 

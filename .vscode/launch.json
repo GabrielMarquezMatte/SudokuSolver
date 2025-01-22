@@ -27,6 +27,17 @@
                     "ignoreFailures": true
                 }
             ]
-        }
+        },
+        {
+            "name": "(Windows) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/VisualStudio/Debug/SudokuSolver_BENCHMARK.exe",
+            "args": ["--benchmark_filter=\"BM_SolverRandom<3, DLXSolver>/50\""],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal"
+        },
     ]
 }

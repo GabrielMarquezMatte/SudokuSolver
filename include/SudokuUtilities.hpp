@@ -20,11 +20,11 @@ SudokuMatrix<N> CreateBoard(const float probabilityOfFilled, pcg64 &randomDevice
                 continue;
             }
             auto possibleValues = board.GetPossibleValues(row, col);
-            if (!possibleValues.Any())
+            int count = possibleValues.Count();
+            if (count == 0)
             {
                 continue;
             }
-            int count = possibleValues.Count();
             std::uniform_int_distribution<int> indexDist(0, count - 1);
             int index = indexDist(randomDevice);
             for (int i = 0; i < index; ++i)

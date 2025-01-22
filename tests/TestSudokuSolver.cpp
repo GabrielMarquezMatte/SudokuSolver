@@ -439,7 +439,7 @@ TEST(BothSudoku, TestSameBitSets)
 }
 
 TEST(SudokuMatrix, SolveSudokuBackTracking)
-{
+{ 
     bool solved = CanBeSolved<3, BackTrackingSolver>();
     EXPECT_TRUE(solved);
 }

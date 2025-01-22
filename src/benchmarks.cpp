@@ -11,11 +11,14 @@ static void BM_CreateBoard(benchmark::State &state)
 {
     pcg64 rng(1);
     float probability = static_cast<float>(state.range(0)) / 100.0f;
+    std::int64_t creations = 0;
     for (auto _ : state)
     {
         SudokuMatrix board = CreateBoard<N>(probability, rng);
         benchmark::DoNotOptimize(board);
+        creations++;
     }
+    state.SetItemsProcessed(creations);
 }
 
 BENCHMARK(BM_CreateBoard<3>)->DenseRange(10, 90, 20);
@@ -28,11 +31,14 @@ static void BM_CreateDynamicBoard(benchmark::State &state)
     pcg64 rng(1);
     constexpr std::size_t size = N;
     float probability = static_cast<float>(state.range(0)) / 100.0f;
+    std::int64_t creations = 0;
     for (auto _ : state)
     {
         DynamicSudokuMatrix board = CreateBoard(size, probability, rng);
         benchmark::DoNotOptimize(board);
+        creations++;
     }
+    state.SetItemsProcessed(creations);
 }
 
 BENCHMARK(BM_CreateDynamicBoard<3>)->DenseRange(10, 90, 20);
