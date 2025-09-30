@@ -16,9 +16,8 @@ struct DLXNode
 
 struct DLXColumn : public DLXNode
 {
-    std::size_t size; // Number of rows currently active in this column
+    std::size_t size;
     std::size_t index;
-    // Additional metadata can go here
 };
 template <typename T>
 struct Placement
