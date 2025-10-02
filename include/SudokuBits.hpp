@@ -327,7 +327,7 @@ public:
 
     inline constexpr void ResetValue(std::size_t row, std::size_t col, std::size_t square, DataType value)
     {
-        FlagType mask = ~(1 << (value - 1));
+        FlagType mask = ~(FlagType(1ULL << (value - 1)));
         m_bits[row] &= mask;
         m_bits[size + col] &= mask;
         m_bits[size * 2 + square] &= mask;
